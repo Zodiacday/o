@@ -31,11 +31,12 @@
 - Cool steel: `#94A3B8`
 - Primary text: `#F8FAFC`
 
-The visual mark is a compact portal ring with a live-status dot. The animated
-orb can be used as an in-app motion or empty-state element, but the launcher
-mark should remain simple enough to read at small iPhone icon sizes.
+The visual mark is an isometric geometric "P" combining a vibrant electric cyan
+outer portal, concentric sky blue square reticle/aperture, and a crisp white
+spine accent. The icon balances technical precision with high contrast visibility
+across dark OLED interfaces and launcher screens.
 
-The first transparent logo asset is stored at
+The master transparent in-app logo asset is stored at
 `assets/previewport-logo-transparent.png`.
 
 ## Voice
