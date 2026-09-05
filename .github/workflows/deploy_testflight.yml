@@ -14,11 +14,14 @@ on:
 jobs:
   testflight-deploy:
     name: Build & Deploy iOS to TestFlight
-    runs-on: macos-15 # Apple Silicon runner with latest Xcode
+    runs-on: macos-latest # Latest macOS runner with Xcode 26+ (iOS 26 SDK)
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Print Xcode Version
+        run: xcodebuild -version
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
