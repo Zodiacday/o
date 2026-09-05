@@ -1,10 +1,10 @@
 Add-Type -AssemblyName System.Drawing
 
-$rawPath = "C:\Users\natan\.gemini\antigravity-ide\brain\fc52e779-8b0c-4590-808e-c6380b91d747\.user_uploaded\media_1788646207617.png"
+$rawPath = "C:\Users\natan\.gemini\antigravity-ide\brain\fc52e779-8b0c-4590-808e-c6380b91d747\.user_uploaded\media_1788646638445.png"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $rawBitmap = [System.Drawing.Bitmap]::FromFile($rawPath)
 
-# 1. Find tight bounding box
+# 1. Find tight bounding box of visible content
 $minX = $rawBitmap.Width
 $maxX = 0
 $minY = $rawBitmap.Height
@@ -26,8 +26,7 @@ $cropW = $maxX - $minX + 1
 $cropH = $maxY - $minY + 1
 Write-Host "Tight Bounding Box: X=$minX, Y=$minY, W=$cropW, H=$cropH"
 
-# 2. Create high-res centered transparent master (1024x1024)
-# We want the logo to occupy ~82% of the height in the master transparent asset so in-app icons look bold and crisp.
+# 2. Master transparent centered in-app asset (1024x1024)
 $masterSize = 1024
 $masterBmp = New-Object System.Drawing.Bitmap($masterSize, $masterSize, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 $gMaster = [System.Drawing.Graphics]::FromImage($masterBmp)
@@ -36,6 +35,7 @@ $gMaster.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQ
 $gMaster.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
 $gMaster.Clear([System.Drawing.Color]::Transparent)
 
+# Content height ratio ~84% of canvas
 $targetH = [int]($masterSize * 0.84)
 $targetW = [int]($cropW * ($targetH / $cropH))
 $destX = [int](($masterSize - $targetW) / 2)
@@ -47,18 +47,18 @@ $destRect = New-Object System.Drawing.Rectangle($destX, $destY, $targetW, $targe
 $gMaster.DrawImage($rawBitmap, $destRect, $srcRect, [System.Drawing.GraphicsUnit]::Pixel)
 $gMaster.Dispose()
 
-# Save transparent in-app master asset
+# Save transparent in-app logo
 $assetLogoPath = Join-Path $projectRoot "assets\previewport-logo-transparent.png"
 $masterBmp.Save($assetLogoPath, [System.Drawing.Imaging.ImageFormat]::Png)
-Write-Host "Saved transparent in-app logo to: $assetLogoPath"
+Write-Host "Updated transparent in-app logo: $assetLogoPath"
 
-# 3. Helper function to generate icon on solid OLED dark background (#000000 / #030712)
-function Generate-LauncherIcon {
+# 3. Helper to generate icons on pitch black OLED (#000000)
+function Generate-IconAsset {
     param(
         [int]$Size,
         [string]$OutputPath,
         [float]$ContentRatio = 0.72,
-        [bool]$SolidDarkBg = $true
+        [bool]$SolidDark = $true
     )
 
     $iconBmp = New-Object System.Drawing.Bitmap($Size, $Size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
@@ -67,8 +67,7 @@ function Generate-LauncherIcon {
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
 
-    if ($SolidDarkBg) {
-        # Pure OLED Black / Deep Space Navy
+    if ($SolidDark) {
         $g.Clear([System.Drawing.Color]::FromArgb(255, 0, 0, 0))
     } else {
         $g.Clear([System.Drawing.Color]::Transparent)
@@ -83,13 +82,13 @@ function Generate-LauncherIcon {
     $g.DrawImage($rawBitmap, $iDestRect, $srcRect, [System.Drawing.GraphicsUnit]::Pixel)
     $g.Dispose()
 
-    # Ensure parent dir exists
     $parent = Split-Path -Parent $OutputPath
     if (-not (Test-Path $parent)) {
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
     }
 
-    if ($Size -eq 1024 -and $SolidDarkBg) {
+    if ($Size -eq 1024 -and $SolidDark) {
+        # App Store requires 24bpp RGB with NO alpha channel
         $rgbBmp = New-Object System.Drawing.Bitmap(1024, 1024, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
         $rgbG = [System.Drawing.Graphics]::FromImage($rgbBmp)
         $rgbG.DrawImage($iconBmp, 0, 0, 1024, 1024)
@@ -99,10 +98,11 @@ function Generate-LauncherIcon {
     } else {
         $iconBmp.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Png)
     }
+
     $iconBmp.Dispose()
 }
 
-# 4. Generate all iOS AppIcon targets (Solid black, NO alpha channel for App Store compliance)
+# 4. Generate all iOS AppIcon targets
 $iosIcons = @{
     'Icon-App-20x20@1x.png' = 20
     'Icon-App-20x20@2x.png' = 40
@@ -124,15 +124,15 @@ $iosIcons = @{
 $iosAppIconDir = Join-Path $projectRoot "ios\Runner\Assets.xcassets\AppIcon.appiconset"
 foreach ($entry in $iosIcons.GetEnumerator()) {
     $outPath = Join-Path $iosAppIconDir $entry.Key
-    Generate-LauncherIcon -Size $entry.Value -OutputPath $outPath -ContentRatio 0.70 -SolidDarkBg $true
+    Generate-IconAsset -Size $entry.Value -OutputPath $outPath -ContentRatio 0.70 -SolidDark $true
 }
 Write-Host "Generated $($iosIcons.Count) iOS AppIcon assets."
 
-# 5. Generate iOS LaunchImage targets (Centered on pitch black)
+# 5. Generate iOS LaunchImage targets
 $launchImgDir = Join-Path $projectRoot "ios\Runner\Assets.xcassets\LaunchImage.imageset"
-Generate-LauncherIcon -Size 300 -OutputPath (Join-Path $launchImgDir "LaunchImage.png") -ContentRatio 0.50 -SolidDarkBg $true
-Generate-LauncherIcon -Size 600 -OutputPath (Join-Path $launchImgDir "LaunchImage@2x.png") -ContentRatio 0.50 -SolidDarkBg $true
-Generate-LauncherIcon -Size 900 -OutputPath (Join-Path $launchImgDir "LaunchImage@3x.png") -ContentRatio 0.50 -SolidDarkBg $true
+Generate-IconAsset -Size 300 -OutputPath (Join-Path $launchImgDir "LaunchImage.png") -ContentRatio 0.50 -SolidDark $true
+Generate-IconAsset -Size 600 -OutputPath (Join-Path $launchImgDir "LaunchImage@2x.png") -ContentRatio 0.50 -SolidDark $true
+Generate-IconAsset -Size 900 -OutputPath (Join-Path $launchImgDir "LaunchImage@3x.png") -ContentRatio 0.50 -SolidDark $true
 Write-Host "Generated iOS LaunchImage assets."
 
 # 6. Generate Android Launcher Icons
@@ -147,7 +147,7 @@ $androidMipmaps = @{
 $resDir = Join-Path $projectRoot "android\app\src\main\res"
 foreach ($entry in $androidMipmaps.GetEnumerator()) {
     $outPath = Join-Path $resDir $entry.Key
-    Generate-LauncherIcon -Size $entry.Value -OutputPath $outPath -ContentRatio 0.68 -SolidDarkBg $true
+    Generate-IconAsset -Size $entry.Value -OutputPath $outPath -ContentRatio 0.68 -SolidDark $true
 }
 Write-Host "Generated Android launcher icons."
 
@@ -162,14 +162,10 @@ $webIcons = @{
 
 foreach ($entry in $webIcons.GetEnumerator()) {
     $outPath = Join-Path $projectRoot $entry.Key
-    Generate-LauncherIcon -Size $entry.Value -OutputPath $outPath -ContentRatio 0.70 -SolidDarkBg $true
+    Generate-IconAsset -Size $entry.Value -OutputPath $outPath -ContentRatio 0.70 -SolidDark $true
 }
 Write-Host "Generated Web launcher icons."
 
-# Also copy transparent version to artifacts for quick inspection
-$artifactInspectPath = "C:\Users\natan\.gemini\antigravity-ide\brain\fc52e779-8b0c-4590-808e-c6380b91d747\new_logo_centered.png"
-$masterBmp.Save($artifactInspectPath, [System.Drawing.Imaging.ImageFormat]::Png)
-
 $rawBitmap.Dispose()
 $masterBmp.Dispose()
-Write-Host "All assets replaced successfully with the new logo!" -ForegroundColor Green
+Write-Host "All assets successfully replaced with the new logo!" -ForegroundColor Green
