@@ -10,6 +10,8 @@
 	<string>PreviewPort</string>
 	<key>NSCameraUsageDescription</key>
 	<string>PreviewPort uses your camera to scan QR codes for loading Flutter previews.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PreviewPort allows you to pick QR code screenshots from your photo library to connect.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PreviewPort connects directly to Flutter preview servers running on your local network.</string>
 	<key>NSAppTransportSecurity</key>
