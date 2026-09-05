@@ -6,6 +6,17 @@
 	<string>app-store-connect</string>
 	<key>destination</key>
 	<string>export</string>
+	<key>teamID</key>
+	<string>RRS43X8SMU</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.previewport.app</key>
+		<string>PreviewPort AppStore</string>
+	</dict>
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
 	<key>uploadSymbols</key>
 	<true/>
 	<key>manageAppVersionAndBuildNumber</key>

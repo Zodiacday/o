@@ -60,6 +60,33 @@ jobs:
           PROFILE_PATH="$PROFILES_DIR/profile.mobileprovision"
           echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PROFILE_PATH"
 
+          # 5. Extract and print provisioning profile UUID for debugging
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
+          echo "Provisioning Profile UUID: $PROFILE_UUID"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+
+      - name: Configure Xcode Code Signing
+        run: |
+          # Use sed to inject manual code signing settings into the Xcode project
+          PBXPROJ="ios/Runner.xcodeproj/project.pbxproj"
+
+          # Replace automatic signing with manual signing for the Runner target
+          # Add CODE_SIGN_STYLE, CODE_SIGN_IDENTITY, DEVELOPMENT_TEAM, and PROVISIONING_PROFILE_SPECIFIER
+          # after each PRODUCT_BUNDLE_IDENTIFIER = com.previewport.app line in Runner target configs
+          sed -i '' '/PRODUCT_BUNDLE_IDENTIFIER = com\.previewport\.app;/{
+            # Only modify Runner target (not RunnerTests)
+            /RunnerTests/!{
+              a\
+              \				CODE_SIGN_IDENTITY = "Apple Distribution";\
+              \				CODE_SIGN_STYLE = Manual;\
+              \				DEVELOPMENT_TEAM = RRS43X8SMU;\
+              \				PROVISIONING_PROFILE_SPECIFIER = "PreviewPort AppStore";
+            }
+          }' "$PBXPROJ"
+
+          echo "✅ Code signing configured for manual signing"
+          grep -A2 "CODE_SIGN_STYLE" "$PBXPROJ" || echo "Warning: CODE_SIGN_STYLE not found"
+
       - name: Determine Build Number
         id: build_num
         run: |
