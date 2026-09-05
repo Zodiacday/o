@@ -1,3 +1,10 @@
+# Certificates and private signing keys
+*.key
+*.csr
+*.cer
+*.p12
+*.mobileprovision
+
 # Miscellaneous
 *.class
 *.log
