@@ -18,13 +18,6 @@ jobs:
     name: Build & Deploy iOS to TestFlight
     runs-on: macos-latest # Latest macOS runner with Xcode 26+ (iOS 26 SDK)
 
-    env:
-      # These are public App Store Connect identifiers, not secrets. For other
-      # Flutter projects, change these two values or define repository variables
-      # with the same names.
-      APP_STORE_CONNECT_APP_ID: ${{ vars.APP_STORE_CONNECT_APP_ID || '6809047342' }}
-      TESTFLIGHT_GROUP: ${{ vars.TESTFLIGHT_GROUP || 'Internal' }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -149,18 +142,3 @@ jobs:
             --apiKey "$KEY_ID" \
             --apiIssuer "$ISSUER_ID"
 
-      - name: Make build available in TestFlight
-        env:
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
-        run: |
-          python3 -m venv "$RUNNER_TEMP/previewport-asc"
-          "$RUNNER_TEMP/previewport-asc/bin/python" -m pip install \
-            --disable-pip-version-check \
-            --quiet \
-            PyJWT cryptography requests
-          "$RUNNER_TEMP/previewport-asc/bin/python" tool/attach_testflight_build.py \
-            --app-id "$APP_STORE_CONNECT_APP_ID" \
-            --group-name "$TESTFLIGHT_GROUP" \
-            --build-number "${{ steps.build_num.outputs.number }}"
