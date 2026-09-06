@@ -155,8 +155,12 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
-          python3 -m pip install --disable-pip-version-check --quiet PyJWT requests
-          python3 tool/attach_testflight_build.py \
+          python3 -m venv "$RUNNER_TEMP/previewport-asc"
+          "$RUNNER_TEMP/previewport-asc/bin/python" -m pip install \
+            --disable-pip-version-check \
+            --quiet \
+            PyJWT requests
+          "$RUNNER_TEMP/previewport-asc/bin/python" tool/attach_testflight_build.py \
             --app-id "$APP_STORE_CONNECT_APP_ID" \
             --group-name "$TESTFLIGHT_GROUP" \
             --build-number "${{ steps.build_num.outputs.number }}"
