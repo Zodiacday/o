@@ -136,10 +136,7 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
       ),
       description: Text(
         'Removed ${_totalSize.toStringAsFixed(1)} MB of temporary data',
-        style: GoogleFonts.inter(
-          color: AppTheme.textSecondary,
-          fontSize: 11,
-        ),
+        style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 11),
       ),
       alignment: Alignment.topCenter,
       autoCloseDuration: const Duration(seconds: 3),
@@ -245,10 +242,8 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
                   child: ListView.separated(
                     padding: EdgeInsets.zero,
                     itemCount: _options.length,
-                    separatorBuilder: (_, _) => const Divider(
-                      height: 1,
-                      color: AppTheme.borderSubtle,
-                    ),
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, color: AppTheme.borderSubtle),
                     itemBuilder: (_, index) {
                       final option = _options[index];
                       return Padding(

@@ -51,6 +51,13 @@ void main() {
           .first,
     );
     expect((scanButton.decoration! as BoxDecoration).color, AppTheme.cyan);
+
+    await tester.tap(find.text('Photo'));
+    await tester.pump();
+    expect(
+      tester.getSize(sheetFinder).height,
+      closeTo(availableHeight * 0.64, 0.5),
+    );
   });
 
   testWidgets('camera mode selector changes from Scan to Photo', (

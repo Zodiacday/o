@@ -103,14 +103,15 @@ class _PreviewBorderPainter extends CustomPainter {
     final beamLength = metric.length * 0.18;
     final start = progress * metric.length;
     final end = start + beamLength;
-    final beamPath = end <= metric.length
-        ? metric.extractPath(start, end)
-        : Path()
+    final beamPath =
+        end <= metric.length ? metric.extractPath(start, end) : Path()
           ..addPath(metric.extractPath(start, metric.length), Offset.zero)
           ..addPath(metric.extractPath(0, end - metric.length), Offset.zero);
 
-    final startPoint = metric.getTangentForOffset(start)?.position ?? Offset.zero;
-    final endPoint = metric.getTangentForOffset(end % metric.length)?.position ??
+    final startPoint =
+        metric.getTangentForOffset(start)?.position ?? Offset.zero;
+    final endPoint =
+        metric.getTangentForOffset(end % metric.length)?.position ??
         Offset.zero;
     final beamPaint = Paint()
       ..style = PaintingStyle.stroke

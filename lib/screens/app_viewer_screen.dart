@@ -1,32 +1,61 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_theme.dart';
+import '../services/shake_detector.dart';
+import '../services/preview_diagnostics_channel.dart';
+import '../models/preview_diagnostic.dart';
+import '../widgets/preview_loading_progress.dart';
+import '../widgets/preview_error_sheet.dart';
 
 class AppViewerScreen extends StatefulWidget {
   final String url;
   final String? title;
+  final String? controlUrl;
 
-  const AppViewerScreen({super.key, required this.url, this.title});
+  const AppViewerScreen({
+    super.key,
+    required this.url,
+    this.title,
+    this.controlUrl,
+  });
 
   @override
   State<AppViewerScreen> createState() => _AppViewerScreenState();
 }
 
-class _AppViewerScreenState extends State<AppViewerScreen> {
+class _AppViewerScreenState extends State<AppViewerScreen>
+    with WidgetsBindingObserver {
   late final WebViewController _controller;
   int _loadingProgress = 0;
   bool _isPageReady = false;
   bool _hasError = false;
-  String? _errorMessage;
+  PreviewDiagnostic? _diagnostic;
+  bool _errorDismissed = false;
   bool _isMenuOpen = false;
   bool _useSafeArea = false;
+  late final ShakeDetector _shakeDetector;
+  PreviewDiagnosticsChannel? _diagnosticsChannel;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
+    _shakeDetector.start();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    if (widget.controlUrl != null) {
+      _diagnosticsChannel = PreviewDiagnosticsChannel(
+        controlUrl: widget.controlUrl,
+        onDiagnostic: _handleRemoteDiagnostic,
+        onHealthy: _handleHealthy,
+      );
+      unawaited(_diagnosticsChannel!.connect());
+    }
 
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -51,17 +80,25 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
               setState(() {
                 _loadingProgress = 100;
                 _isPageReady = true;
+                _hasError = false;
+                _diagnostic = null;
+                _errorDismissed = false;
               });
             }
           },
           onWebResourceError: (error) {
             if (error.isForMainFrame ?? true) {
               if (mounted) {
-                setState(() {
-                  _hasError = true;
-                  _isPageReady = false;
-                  _errorMessage = error.description;
-                });
+                _showDiagnostic(
+                  PreviewDiagnostic.localError(
+                    message: [
+                      if (error.description.trim().isNotEmpty)
+                        error.description.trim(),
+                      if (widget.controlUrl == null)
+                        'CLI diagnostics are unavailable for this connection.',
+                    ].join(' '),
+                  ),
+                );
               }
             }
           },
@@ -71,7 +108,21 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _shakeDetector.start();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _shakeDetector.stop();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _shakeDetector.stop();
+    unawaited(_diagnosticsChannel?.dispose());
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
@@ -138,9 +189,13 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
                               : 'Loading $_loadingProgress%',
                           style: GoogleFonts.inter(
                             fontSize: 12,
-                            color: AppTheme.textSecondary,
+                            color: _loadingProgress == 0
+                                ? AppTheme.textSecondary
+                                : AppTheme.statusGreen,
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        PreviewLoadingProgress(progress: _loadingProgress),
                       ],
                     ),
                   ),
@@ -158,149 +213,120 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
                     value: _loadingProgress / 100.0,
                     backgroundColor: Colors.transparent,
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppTheme.lightBlue,
+                      AppTheme.statusGreen,
                     ),
                     minHeight: 2,
                   ),
                 ),
               ),
 
-            // 3. Minimalist Connection Error Fallback
-            if (_hasError)
-              Container(
-                color: AppTheme.background,
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.border),
-                        ),
-                        child: const Icon(
-                          Icons.wifi_off_rounded,
-                          size: 24,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Text(
-                        'Unable to Connect',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _errorMessage ??
-                            'Make sure your computer and phone are connected to the same network.',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppTheme.border),
-                        ),
-                        child: Text(
-                          widget.url,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Retry'),
-                            onPressed: () {
-                              setState(() {
-                                _hasError = false;
-                                _isPageReady = false;
-                                _loadingProgress = 0;
-                              });
-                              _controller.reload();
-                            },
-                          ),
-                          const SizedBox(width: 10),
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.textSecondary,
-                              side: const BorderSide(color: AppTheme.border),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Scanner'),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+            // 3. Keep the live preview visible while diagnostics slide up.
+            if (_diagnostic != null && !_errorDismissed)
+              PreviewErrorSheet(
+                diagnostic: _diagnostic!,
+                onRetry: _retryPreview,
+                onCopyDetails: _copyDiagnostic,
+                onDismiss: () {
+                  setState(() => _errorDismissed = true);
+                },
               ),
 
-            // Quiet viewer controls. The preview remains the visual focus;
-            // controls appear only as a small neutral affordance.
-            Positioned(
-              top: MediaQuery.paddingOf(context).top + 10,
-              right: 14,
-              child: _buildFloatingDevPill(),
-            ),
-            if (_isMenuOpen)
-              Positioned(
-                top: MediaQuery.paddingOf(context).top + 58,
-                right: 14,
-                child: _buildExpandedMenu(),
-              ),
+            _buildMenuOverlay(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFloatingDevPill() {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.35),
-      shape: const CircleBorder(),
-      child: IconButton(
-        tooltip: 'Preview controls',
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          setState(() => _isMenuOpen = !_isMenuOpen);
-        },
-        icon: Icon(
-          _isMenuOpen ? Icons.close_rounded : Icons.more_horiz_rounded,
-          color: Colors.white.withValues(alpha: 0.75),
-          size: 20,
+  void _openMenuFromShake() {
+    if (!mounted || _isMenuOpen) return;
+    HapticFeedback.mediumImpact();
+    setState(() => _isMenuOpen = true);
+  }
+
+  void _handleRemoteDiagnostic(PreviewDiagnostic diagnostic) {
+    if (!mounted) return;
+    _showDiagnostic(diagnostic);
+  }
+
+  void _handleHealthy() {
+    if (!mounted) return;
+    setState(() {
+      _diagnostic = null;
+      _errorDismissed = false;
+      _hasError = false;
+    });
+  }
+
+  void _showDiagnostic(PreviewDiagnostic diagnostic) {
+    if (!mounted) return;
+    setState(() {
+      _diagnostic = diagnostic;
+      _errorDismissed = false;
+      _hasError = true;
+    });
+  }
+
+  void _retryPreview() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _diagnostic = null;
+      _errorDismissed = false;
+      _hasError = false;
+      _isPageReady = false;
+      _loadingProgress = 0;
+    });
+    _controller.reload();
+  }
+
+  void _copyDiagnostic() {
+    final diagnostic = _diagnostic;
+    if (diagnostic == null) return;
+    Clipboard.setData(ClipboardData(text: diagnostic.details));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppTheme.surface,
+        content: Text(
+          'Error details copied',
+          style: GoogleFonts.inter(color: Colors.white, fontSize: 12),
+        ),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
+  void _closeMenu() {
+    if (!mounted || !_isMenuOpen) return;
+    HapticFeedback.selectionClick();
+    setState(() => _isMenuOpen = false);
+  }
+
+  Widget _buildMenuOverlay() {
+    return Positioned.fill(
+      child: IgnorePointer(
+        ignoring: !_isMenuOpen,
+        child: AnimatedOpacity(
+          opacity: _isMenuOpen ? 1 : 0,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _closeMenu,
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: 0.62),
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {},
+                  child: AnimatedScale(
+                    scale: _isMenuOpen ? 1 : 0.94,
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    child: _buildExpandedMenu(),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -308,17 +334,19 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
 
   Widget _buildExpandedMenu() {
     return Container(
-      width: 218,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      width: 278,
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
       decoration: BoxDecoration(
-        color: const Color(0xF20B0B0B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.previewBorder),
+        color: const Color(0xF20A0A0A),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppTheme.previewBorder.withValues(alpha: 0.8),
+        ),
         boxShadow: const [
           BoxShadow(
             color: Colors.black54,
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            blurRadius: 34,
+            offset: Offset(0, 14),
           ),
         ],
       ),
@@ -332,7 +360,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
               Text(
                 'Preview controls',
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppTheme.textPrimary,
                 ),
@@ -342,8 +370,11 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
                   HapticFeedback.selectionClick();
                   setState(() => _isMenuOpen = false);
                 },
-                child: const Icon(Icons.close_rounded,
-                    size: 16, color: AppTheme.textSecondary),
+                child: const Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: AppTheme.textSecondary,
+                ),
               ),
             ],
           ),

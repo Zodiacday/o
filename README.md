@@ -13,6 +13,12 @@ chrome.
 - Plain HTTP and HTTPS QR codes
 - HTTP and HTTPS URLs pasted from the clipboard or entered manually
 
+When the app is on the foreground scans tab, it also listens for active
+PreviewPort CLI sessions on the local network. Discovered sessions appear
+above Recent previews and are never opened automatically; tapping one checks
+that the endpoint responds before opening it. QR scanning, clipboard, and
+manual URL entry remain available as fallbacks.
+
 Local HTTP access is intentionally enabled for development servers. The phone
 and computer must be on the same network unless the supplied URL is reachable
 through a tunnel.

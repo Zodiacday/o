@@ -1,18 +1,13 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-enum NetworkState {
-  wifiReady,
-  cellularHotspot,
-  offline,
-  unknown,
-}
+enum NetworkState { wifiReady, cellularHotspot, offline, unknown }
 
 class NetworkStatusService {
   final Connectivity _connectivity;
 
   NetworkStatusService({Connectivity? connectivity})
-      : _connectivity = connectivity ?? Connectivity();
+    : _connectivity = connectivity ?? Connectivity();
 
   static NetworkState mapConnectivityResults(List<ConnectivityResult> results) {
     if (results.isEmpty) {

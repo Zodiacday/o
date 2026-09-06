@@ -108,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await _launchApp(
           capture.connection.url,
           title: capture.connection.projectName,
+          controlUrl: capture.connection.controlUrl,
         );
       } else if (capture is PhotoCameraCapture) {
         final bytes = await capture.file.readAsBytes();
@@ -143,7 +144,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _launchApp(String url, {String? title}) async {
+  Future<void> _launchApp(
+    String url, {
+    String? title,
+    String? controlUrl,
+  }) async {
     await HistoryService.saveSession(url, title: title);
     await _loadHistory();
 
@@ -152,7 +157,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AppViewerScreen(url: url, title: title),
+        builder: (_) =>
+            AppViewerScreen(url: url, title: title, controlUrl: controlUrl),
       ),
     );
 
@@ -169,7 +175,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (response.statusCode < 200 || response.statusCode >= 400) {
         throw StateError('Preview returned HTTP ${response.statusCode}');
       }
-      await _launchApp(preview.url, title: preview.projectName);
+      await _launchApp(
+        preview.url,
+        title: preview.projectName,
+        controlUrl: preview.controlUrl,
+      );
     } catch (_) {
       if (!mounted) return;
       toastification.show(

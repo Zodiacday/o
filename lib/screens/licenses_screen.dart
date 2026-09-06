@@ -30,7 +30,8 @@ const List<LicensePackageInfo> kOpenSourcePackages = [
     name: 'flutter',
     version: 'SDK 3.29+',
     licenseType: 'BSD-3-Clause',
-    description: 'Flutter is Google\'s SDK for crafting high-performance, beautiful mobile and web applications.',
+    description:
+        'Flutter is Google\'s SDK for crafting high-performance, beautiful mobile and web applications.',
     author: 'The Flutter Authors',
     fullLicense: '''Copyright 2014 The Flutter Authors. All rights reserved.
 
@@ -56,7 +57,8 @@ DISCLAIMED.''',
     name: 'mobile_scanner',
     version: '^5.2.3',
     licenseType: 'Apache-2.0',
-    description: 'Universal camera barcode and QR code scanner powered by ML Kit and platform views.',
+    description:
+        'Universal camera barcode and QR code scanner powered by ML Kit and platform views.',
     author: 'Julian Steenbakker & Contributors',
     fullLicense: '''Copyright 2021 Julian Steenbakker
 
@@ -76,7 +78,8 @@ limitations under the License.''',
     name: 'webview_flutter',
     version: '^4.10.0',
     licenseType: 'BSD-3-Clause',
-    description: 'Hardware-accelerated embedded browser runtime engine for rendering developer preview targets.',
+    description:
+        'Hardware-accelerated embedded browser runtime engine for rendering developer preview targets.',
     author: 'Flutter Team',
     fullLicense: '''Copyright 2013 The Flutter Authors. All rights reserved.
 
@@ -122,7 +125,8 @@ You may obtain a copy of the License at
     name: 'flutter_animate',
     version: '^4.5.2',
     licenseType: 'MIT',
-    description: 'Performant declarative motion choreography and entrance transitions.',
+    description:
+        'Performant declarative motion choreography and entrance transitions.',
     author: 'Grant Skinner (gskinner)',
     fullLicense: '''MIT License
 
@@ -139,7 +143,8 @@ furnished to do so.''',
     name: 'flutter_bounceable',
     version: '^1.1.0',
     licenseType: 'MIT',
-    description: 'Tactile spring physics interaction for micro-feedback on touch and click.',
+    description:
+        'Tactile spring physics interaction for micro-feedback on touch and click.',
     author: 'Guillaume Roux',
     fullLicense: '''MIT License
 
@@ -155,7 +160,8 @@ copies of the Software.''',
     name: 'toastification',
     version: '^2.3.0',
     licenseType: 'MIT',
-    description: 'Industrial HUD notification overlays and notification management.',
+    description:
+        'Industrial HUD notification overlays and notification management.',
     author: 'Payam Zahedi',
     fullLicense: '''MIT License
 
@@ -171,7 +177,8 @@ copies of the Software.''',
     name: 'qr_flutter',
     version: '^4.1.0',
     licenseType: 'BSD-3-Clause',
-    description: 'Native QR code rendering engine with high error correction and matrix generation.',
+    description:
+        'Native QR code rendering engine with high error correction and matrix generation.',
     author: 'Luke Freeman',
     fullLicense: '''Copyright (c) 2019, Luke Freeman. All rights reserved.
 
@@ -184,7 +191,8 @@ modification, are permitted provided that the following conditions are met:
     name: 'flutter_slidable',
     version: '^3.1.2',
     licenseType: 'MIT',
-    description: 'Smooth swipe action gestures for list tiles and session deletion.',
+    description:
+        'Smooth swipe action gestures for list tiles and session deletion.',
     author: 'Romain Rastel',
     fullLicense: '''MIT License
 
@@ -200,7 +208,8 @@ copies of the Software.''',
     name: 'skeletonizer',
     version: '^1.4.3',
     licenseType: 'MIT',
-    description: 'Automated shimmer skeleton placeholders matching exact layout hierarchy.',
+    description:
+        'Automated shimmer skeleton placeholders matching exact layout hierarchy.',
     author: 'Milad Akarie',
     fullLicense: '''MIT License
 
@@ -216,7 +225,8 @@ copies of the Software.''',
     name: 'connectivity_plus',
     version: '^6.1.1',
     licenseType: 'BSD-3-Clause',
-    description: 'Real-time network state listener for WiFi, cellular, and ethernet status.',
+    description:
+        'Real-time network state listener for WiFi, cellular, and ethernet status.',
     author: 'Flutter Community',
     fullLicense: '''Copyright 2017 The Chromium Authors. All rights reserved.
 Copyright 2020 The Flutter Community Authors. All rights reserved.
@@ -229,7 +239,8 @@ modification, are permitted provided that the following conditions are met:
     name: 'shared_preferences',
     version: '^2.3.5',
     licenseType: 'BSD-3-Clause',
-    description: 'Persistent local key-value store for session history and user settings.',
+    description:
+        'Persistent local key-value store for session history and user settings.',
     author: 'Flutter Authors',
     fullLicense: '''Copyright 2013 The Flutter Authors. All rights reserved.
 
@@ -518,9 +529,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
         decoration: const BoxDecoration(
           color: AppTheme.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          border: Border(
-            top: BorderSide(color: AppTheme.previewBorder),
-          ),
+          border: Border(top: BorderSide(color: AppTheme.previewBorder)),
         ),
         child: SafeArea(
           child: Column(

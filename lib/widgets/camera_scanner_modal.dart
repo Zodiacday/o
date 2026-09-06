@@ -292,11 +292,29 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
       );
     }
 
-    return Center(
-      child: AspectRatio(
-        aspectRatio: photoController.value.aspectRatio,
-        child: CameraPreview(photoController),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cameraAspectRatio = photoController.value.aspectRatio;
+        final viewportAspectRatio =
+            constraints.maxWidth / constraints.maxHeight;
+        final previewWidth = viewportAspectRatio > cameraAspectRatio
+            ? constraints.maxWidth
+            : constraints.maxHeight * cameraAspectRatio;
+        final previewHeight = viewportAspectRatio > cameraAspectRatio
+            ? constraints.maxWidth / cameraAspectRatio
+            : constraints.maxHeight;
+
+        return ClipRect(
+          key: const ValueKey('previewport-photo-preview'),
+          child: Center(
+            child: SizedBox(
+              width: previewWidth,
+              height: previewHeight,
+              child: CameraPreview(photoController),
+            ),
+          ),
+        );
+      },
     );
   }
 

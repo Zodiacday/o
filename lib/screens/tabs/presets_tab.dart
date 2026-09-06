@@ -43,10 +43,7 @@ class PresetsTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF000000),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF1E2638),
-                  width: 1.0,
-                ),
+                border: Border.all(color: const Color(0xFF1E2638), width: 1.0),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,10 +129,7 @@ class PresetsTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF000000),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF1E2638),
-                  width: 1.0,
-                ),
+                border: Border.all(color: const Color(0xFF1E2638), width: 1.0),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

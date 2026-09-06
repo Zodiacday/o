@@ -41,9 +41,7 @@ class FloatingNavBar extends StatelessWidget {
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppTheme.background,
-        border: Border(
-          top: BorderSide(color: AppTheme.previewBorder),
-        ),
+        border: Border(top: BorderSide(color: AppTheme.previewBorder)),
       ),
       child: SafeArea(
         top: false,

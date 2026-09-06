@@ -14,6 +14,12 @@
 	<string>PreviewPort allows you to pick QR code screenshots from your photo library to connect.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PreviewPort connects directly to Flutter preview servers running on your local network.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_previewport._tcp</string>
+	</array>
+	<key>NSMotionUsageDescription</key>
+	<string>PreviewPort uses motion detection to open the preview controls when you shake your iPhone.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

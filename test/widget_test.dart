@@ -1,6 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:previewport/models/session_item.dart';
 import 'package:previewport/models/preview_connection.dart';
 import 'package:previewport/services/network_status_service.dart';
@@ -8,7 +7,6 @@ import 'package:previewport/theme/app_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
 
   test('SessionItem serializes and deserializes correctly', () {
     final item = SessionItem(
@@ -36,12 +34,13 @@ void main() {
 
   test('PreviewConnection parses PreviewPort QR payloads', () {
     final connection = PreviewConnection.tryParse(
-      'previewport://connect?v=1&url=http%3A%2F%2F192.168.1.4%3A8080&name=demo_app',
+      'previewport://connect?v=1&url=http%3A%2F%2F192.168.1.4%3A8080&name=demo_app&control=ws%3A%2F%2F192.168.1.4%3A4321%2Fevents%3Ftoken%3Dabc',
     );
 
     expect(connection, isNotNull);
     expect(connection!.url, 'http://192.168.1.4:8080');
     expect(connection.projectName, 'demo_app');
+    expect(connection.controlUrl, 'ws://192.168.1.4:4321/events?token=abc');
   });
 
   test('PreviewConnection keeps raw web URLs compatible', () {
@@ -72,6 +71,12 @@ void main() {
       isNull,
     );
     expect(PreviewConnection.tryParse('fluttergo://connect?v=1'), isNull);
+    expect(
+      PreviewConnection.tryParse(
+        'previewport://connect?v=1&url=http%3A%2F%2F192.168.1.4%3A8080&control=ws%3A%2F%2F10.0.0.2%3A4321%2Fevents%3Ftoken%3Dabc',
+      )?.controlUrl,
+      isNull,
+    );
   });
 
   test('NetworkStatusService maps Wi-Fi and Ethernet to wifiReady', () {
@@ -80,7 +85,9 @@ void main() {
       equals(NetworkState.wifiReady),
     );
     expect(
-      NetworkStatusService.mapConnectivityResults([ConnectivityResult.ethernet]),
+      NetworkStatusService.mapConnectivityResults([
+        ConnectivityResult.ethernet,
+      ]),
       equals(NetworkState.wifiReady),
     );
     expect(

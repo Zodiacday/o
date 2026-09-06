@@ -27,6 +27,10 @@ dependencies:
   qr_flutter: ^4.1.0
   connectivity_plus: ^6.1.4
   image_picker: ^1.2.3
+  sensors_plus: ^7.1.0
+  bonsoir: ^7.1.5
+  http: ^1.6.0
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

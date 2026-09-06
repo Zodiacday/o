@@ -23,8 +23,7 @@ class HistoryManagementModal extends StatefulWidget {
   }
 
   @override
-  State<HistoryManagementModal> createState() =>
-      _HistoryManagementModalState();
+  State<HistoryManagementModal> createState() => _HistoryManagementModalState();
 }
 
 class _HistoryManagementModalState extends State<HistoryManagementModal> {
@@ -249,10 +248,7 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(
-          color: AppTheme.cyan,
-          strokeWidth: 2,
-        ),
+        child: CircularProgressIndicator(color: AppTheme.cyan, strokeWidth: 2),
       );
     }
 
@@ -291,10 +287,8 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
     return ListView.separated(
       padding: EdgeInsets.zero,
       itemCount: _items.length,
-      separatorBuilder: (_, _) => const Divider(
-        height: 1,
-        color: AppTheme.borderSubtle,
-      ),
+      separatorBuilder: (_, _) =>
+          const Divider(height: 1, color: AppTheme.borderSubtle),
       itemBuilder: (context, index) {
         final item = _items[index];
         final selected = _selectedIds.contains(item.id);

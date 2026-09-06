@@ -94,20 +94,18 @@ class _HistoryTabState extends State<HistoryTab> {
                         height: 1,
                         color: AppTheme.borderSubtle,
                       ),
-                      itemBuilder: (context, index) => _buildHistoryRow(
-                        context,
-                        filtered[index],
-                      )
-                          .animate()
-                          .fadeIn(
-                            duration: 260.ms,
-                            delay: Duration(milliseconds: index * 35),
-                          )
-                          .slideY(
-                            begin: 0.04,
-                            end: 0,
-                            curve: Curves.easeOutCubic,
-                          ),
+                      itemBuilder: (context, index) =>
+                          _buildHistoryRow(context, filtered[index])
+                              .animate()
+                              .fadeIn(
+                                duration: 260.ms,
+                                delay: Duration(milliseconds: index * 35),
+                              )
+                              .slideY(
+                                begin: 0.04,
+                                end: 0,
+                                curve: Curves.easeOutCubic,
+                              ),
                     ),
             ),
           ],
@@ -122,17 +120,11 @@ class _HistoryTabState extends State<HistoryTab> {
       label: 'Search preview history',
       child: TextField(
         onChanged: (value) => setState(() => _searchQuery = value),
-        style: GoogleFonts.inter(
-          color: AppTheme.textPrimary,
-          fontSize: 14,
-        ),
+        style: GoogleFonts.inter(color: AppTheme.textPrimary, fontSize: 14),
         cursorColor: AppTheme.cyan,
         decoration: InputDecoration(
           hintText: 'Search previews',
-          hintStyle: GoogleFonts.inter(
-            color: AppTheme.textMuted,
-            fontSize: 14,
-          ),
+          hintStyle: GoogleFonts.inter(color: AppTheme.textMuted, fontSize: 14),
           prefixIcon: const Icon(
             LucideIcons.search,
             color: AppTheme.textMuted,
@@ -172,11 +164,8 @@ class _HistoryTabState extends State<HistoryTab> {
         extentRatio: 0.44,
         children: [
           SlidableAction(
-            onPressed: (_) => ShareQrModal.show(
-              context,
-              url: item.url,
-              title: item.title,
-            ),
+            onPressed: (_) =>
+                ShareQrModal.show(context, url: item.url, title: item.title),
             backgroundColor: const Color(0xFF0284C7),
             foregroundColor: Colors.white,
             icon: LucideIcons.qr_code,
@@ -297,10 +286,10 @@ class _HistoryTabState extends State<HistoryTab> {
     final uri = Uri.tryParse(url);
     final faviconUrl = (uri != null && uri.hasScheme && uri.hasAuthority)
         ? (uri.host == 'localhost' ||
-                uri.host == '127.0.0.1' ||
-                uri.host.startsWith('192.168.'))
-            ? '${uri.scheme}://${uri.host}:${uri.port}/favicon.png'
-            : 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128'
+                  uri.host == '127.0.0.1' ||
+                  uri.host.startsWith('192.168.'))
+              ? '${uri.scheme}://${uri.host}:${uri.port}/favicon.png'
+              : 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128'
         : null;
 
     return SizedBox(

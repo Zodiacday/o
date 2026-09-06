@@ -108,7 +108,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: LucideIcons.clock,
                   title: 'Session history',
                   subtitle: 'Saved local preview connections',
-                  trailing: '$_sessionCount ${_sessionCount == 1 ? 'item' : 'items'}',
+                  trailing:
+                      '$_sessionCount ${_sessionCount == 1 ? 'item' : 'items'}',
                   onTap: () => HistoryManagementModal.show(
                     context,
                     onUpdated: _loadHistoryCount,
@@ -146,9 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: 'Libraries used by PreviewPort',
                   trailing: 'View',
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const LicensesScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const LicensesScreen()),
                   ),
                 ),
               ],
@@ -249,7 +248,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Icon(
               icon,
               size: 18,
-              color: onTap == null ? AppTheme.textMuted : AppTheme.textSecondary,
+              color: onTap == null
+                  ? AppTheme.textMuted
+                  : AppTheme.textSecondary,
             ),
           ),
           const SizedBox(width: 12),
@@ -434,10 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   body: 'Your phone connects directly to the scanned URL.',
                   status: 'Direct',
                 ),
-                const Divider(
-                  height: 1,
-                  color: AppTheme.borderSubtle,
-                ),
+                const Divider(height: 1, color: AppTheme.borderSubtle),
                 _buildPrivacyRow(
                   icon: LucideIcons.eye_off,
                   title: 'Tracking',
