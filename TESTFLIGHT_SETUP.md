@@ -40,7 +40,22 @@ You can easily encode your certificate and provisioning profile in PowerShell:
 
 ---
 
-## 3. How to Deploy to TestFlight
+## 3. One-time TestFlight setup
+
+The first build for each Flutter app still needs one App Store Connect setup:
+
+1. Create an internal TestFlight group. The default group name used by CI is
+   `Internal`.
+2. Add your App Store Connect Apple Account to that group once.
+3. Add the repository variables `APP_STORE_CONNECT_APP_ID` and
+   `TESTFLIGHT_GROUP` if this repository does not use the defaults in the
+   workflow.
+
+After that, CI handles build distribution. It waits for Apple processing and
+adds the new build to the internal group through the App Store Connect API.
+You do not need to click **Add Builds** for every commit.
+
+## 4. How to Deploy to TestFlight
 
 Once you have added the secrets to GitHub:
 
@@ -53,5 +68,22 @@ Once you have added the secrets to GitHub:
    - Install Flutter & project dependencies.
    - Code-sign your app with your distribution certificate.
    - Build the release `.ipa` package.
-   - Upload it directly to **App Store Connect / TestFlight**!
-5. In ~5–10 minutes, the build will appear under **TestFlight** in your [App Store Connect](https://appstoreconnect.apple.com) dashboard ready for internal and external testing!
+   - Upload it directly to **App Store Connect**.
+   - Wait until Apple marks this exact build as processed.
+   - Add it to the configured internal TestFlight group automatically.
+5. The build will then be available in TestFlight for the Apple Account already
+   in that group. Apple processing time varies; the workflow waits up to 30
+   minutes and fails with the actual processing state if Apple rejects the build.
+
+## 5. Reuse this flow for another Flutter project
+
+Copy these two files into the other project:
+
+```text
+tool/attach_testflight_build.py
+.github/workflows/deploy_testflight.yml
+```
+
+Then set that project's App Store Connect app ID and internal group through
+repository variables. The signing and App Store Connect API secrets can be
+shared at the organization level when the projects use the same Apple team.
