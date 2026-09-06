@@ -32,22 +32,21 @@ def required_env(*names: str) -> str:
 
 
 def auth_headers() -> dict[str, str]:
-    key_id = required_env("APP_STORE_CONNECT_KEY_ID", "ASC_KEY_ID")
-    issuer_id = required_env("APP_STORE_CONNECT_ISSUER_ID", "ASC_ISSUER_ID")
+    key_id = required_env("APP_STORE_CONNECT_KEY_ID", "ASC_KEY_ID").strip()
+    issuer_id = required_env("APP_STORE_CONNECT_ISSUER_ID", "ASC_ISSUER_ID").strip()
     private_key = required_env("APP_STORE_CONNECT_PRIVATE_KEY", "ASC_PRIVATE_KEY")
-    private_key = private_key.replace("\\n", "\n").replace("\r\n", "\n")
+    private_key = private_key.replace("\\n", "\n").replace("\r\n", "\n").strip()
 
     now = int(time.time())
     token = jwt.encode(
         {
             "iss": issuer_id,
-            "iat": now,
-            "exp": now + 15 * 60,
+            "exp": now + 20 * 60,
             "aud": "appstoreconnect-v1",
         },
         private_key,
         algorithm="ES256",
-        headers={"kid": key_id, "typ": "JWT"},
+        headers={"kid": key_id, "alg": "ES256", "typ": "JWT"},
     )
     return {
         "Authorization": f"Bearer {token}",
