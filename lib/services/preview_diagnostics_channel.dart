@@ -19,6 +19,27 @@ class PreviewDiagnosticsChannel {
   WebSocketChannel? _channel;
   StreamSubscription<Object?>? _subscription;
   bool _disposed = false;
+  bool _connected = false;
+  Map<String, Object?>? _latestProgress;
+  Timer? _reconnectTimer;
+
+  void reportProgress(int percent, {String state = 'loading'}) {
+    if (_disposed) return;
+    _latestProgress = {
+      'type': 'preview_progress',
+      'percent': percent.clamp(0, 100),
+      'state': state,
+    };
+    if (_connected) _channel?.sink.add(jsonEncode(_latestProgress));
+  }
+
+  void _reconnect() {
+    if (_disposed) return;
+    _connected = false;
+    _channel = null;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 2), connect);
+  }
 
   PreviewDiagnosticsChannel({
     required this.controlUrl,
@@ -36,20 +57,25 @@ class PreviewDiagnosticsChannel {
       _channel = channel;
       await channel.ready;
       if (_disposed) return;
+      _connected = true;
+      if (_latestProgress != null) channel.sink.add(jsonEncode(_latestProgress));
       _subscription = channel.stream.listen(
         _handleMessage,
         onError: (_) {},
-        onDone: () {},
+        onDone: _reconnect,
         cancelOnError: false,
       );
     } catch (_) {
       await _closeChannel();
+      _reconnect();
     }
   }
 
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _reconnectTimer?.cancel();
+    _connected = false;
     await _subscription?.cancel();
     _subscription = null;
     await _closeChannel();

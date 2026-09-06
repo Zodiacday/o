@@ -69,12 +69,15 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
-            if (mounted) setState(() => _loadingProgress = progress);
+            if (!mounted || _hasError || _isPageReady) return;
+            setState(() => _loadingProgress = progress.clamp(0, 100));
+            _diagnosticsChannel?.reportProgress(_loadingProgress);
           },
           onPageStarted: (_) {
             if (mounted) {
               _loadingCompletionTimer?.cancel();
               _loadingStartedAt = DateTime.now();
+              _diagnosticsChannel?.reportProgress(0);
               setState(() {
                 _hasError = false;
                 _isPageReady = false;
@@ -85,6 +88,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           onPageFinished: (_) {
             if (!mounted || _hasError) return;
             setState(() => _loadingProgress = 100);
+            _diagnosticsChannel?.reportProgress(100);
             _completeLoadingWhenVisibleLongEnough();
           },
           onWebResourceError: (error) {
@@ -212,6 +216,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   void _showDiagnostic(PreviewDiagnostic diagnostic) {
     if (!mounted) return;
     _loadingCompletionTimer?.cancel();
+    _diagnosticsChannel?.reportProgress(_loadingProgress, state: 'failed');
     setState(() {
       _diagnostic = diagnostic;
       _errorDismissed = false;
@@ -223,6 +228,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     HapticFeedback.mediumImpact();
     _loadingCompletionTimer?.cancel();
     _loadingStartedAt = DateTime.now();
+    _diagnosticsChannel?.reportProgress(0);
     setState(() {
       _diagnostic = null;
       _errorDismissed = false;
@@ -240,6 +246,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
     void complete() {
       if (!mounted || _hasError) return;
+      _diagnosticsChannel?.reportProgress(100, state: 'ready');
       setState(() {
         _isPageReady = true;
         _hasError = false;

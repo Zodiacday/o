@@ -16,6 +16,7 @@ class PreviewConnection {
   static PreviewConnection? tryParse(String rawValue) {
     final raw = rawValue.trim();
     if (raw.isEmpty) return null;
+    if (raw.startsWith('PP1|')) return _parseCompact(raw);
 
     final uri = Uri.tryParse(raw);
     if (uri == null) return null;
@@ -45,6 +46,29 @@ class PreviewConnection {
       projectName: rawName == null || rawName.isEmpty ? null : rawName,
       controlUrl: controlUrl,
     );
+  }
+
+  static PreviewConnection? _parseCompact(String raw) {
+    final parts = raw.split('|');
+    if (parts.length != 6) return null;
+    final port = int.tryParse(parts[2]);
+    final controlPort = int.tryParse(parts[3]);
+    if (port == null || port < 1 || port > 65535 ||
+        controlPort == null || controlPort < 1 || controlPort > 65535 ||
+        !RegExp(r'^[a-zA-Z0-9._:-]+$').hasMatch(parts[1]) ||
+        !RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(parts[4])) return null;
+    try {
+      final target = Uri(scheme: 'http', host: parts[1], port: port);
+      final control = Uri(scheme: 'ws', host: parts[1], port: controlPort,
+        path: '/events', queryParameters: {'token': parts[4]});
+      return PreviewConnection(url: target.toString(),
+        projectName: Uri.decodeComponent(parts[5]),
+        controlUrl: control.toString());
+    } on FormatException {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
   }
 
   /// Returns a control endpoint only when it is a tokenized WebSocket URL

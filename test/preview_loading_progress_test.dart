@@ -17,6 +17,23 @@ Widget _testHost({required int progress, String? projectName}) {
 }
 
 void main() {
+  testWidgets('percentage stays inside a square ring on a phone', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_testHost(progress: 100));
+    final ring = tester.getRect(
+      find.byKey(const ValueKey('preview-loading-ring')),
+    );
+    final percentage = tester.getRect(find.text('100%'));
+    expect(ring.width, 248);
+    expect(ring.height, ring.width);
+    expect(ring.deflate(24).contains(percentage.topLeft), isTrue);
+    expect(ring.deflate(24).contains(percentage.bottomRight), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('renders the focused circular loading experience', (
     tester,
   ) async {
@@ -25,7 +42,7 @@ void main() {
     );
 
     expect(find.text('PreviewPort'), findsOneWidget);
-    expect(find.text('Loading Flutter preview'), findsOneWidget);
+    expect(find.text('Opening preview'), findsOneWidget);
     expect(find.text('42%'), findsOneWidget);
     expect(find.text('Daily Tasks'), findsOneWidget);
     expect(

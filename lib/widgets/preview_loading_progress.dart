@@ -79,7 +79,7 @@ class _PreviewLoadingProgressState extends State<PreviewLoadingProgress>
           final width = constraints.hasBoundedWidth
               ? constraints.maxWidth
               : 390.0;
-          final ringSize = math.min(240.0, math.max(168.0, width - 48));
+          final ringSize = math.min(248.0, math.max(0.0, width - 48));
 
           return Stack(
             key: const ValueKey('preview-loading-progress'),
@@ -90,14 +90,15 @@ class _PreviewLoadingProgressState extends State<PreviewLoadingProgress>
                 left: 24,
                 child: _buildBrand(),
               ),
-              Center(
+              Align(
+                alignment: const Alignment(0, -0.12),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Loading Flutter preview',
+                        'Opening preview',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 13,
@@ -116,7 +117,7 @@ class _PreviewLoadingProgressState extends State<PreviewLoadingProgress>
                         style: const TextStyle(
                           color: AppTheme.textPrimary,
                           fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -172,14 +173,31 @@ class _PreviewLoadingProgressState extends State<PreviewLoadingProgress>
                 progress: animatedProgress,
                 shimmer: _shimmerController.value,
               ),
-              child: Center(
-                child: Text(
-                  '$progress%',
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 52,
-                    fontWeight: FontWeight.w300,
-                    letterSpacing: -2.5,
+              child: SizedBox.square(
+                dimension: size,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(text: '$progress'),
+                            const TextSpan(
+                              text: '%',
+                              style: TextStyle(fontSize: 23, letterSpacing: 0),
+                            ),
+                          ],
+                        ),
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 38,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: -1.2,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -202,7 +220,7 @@ class _ProgressRingPainter extends CustomPainter {
     final clampedProgress = progress.clamp(0.0, 1.0).toDouble();
     if (clampedProgress <= 0) return;
 
-    const strokeWidth = 4.0;
+    const strokeWidth = 5.0;
     final center = size.center(Offset.zero);
     final radius = math.min(size.width, size.height) / 2 - strokeWidth - 4;
     final rect = Rect.fromCircle(center: center, radius: radius);
@@ -210,11 +228,11 @@ class _ProgressRingPainter extends CustomPainter {
     final sweepAngle = math.pi * 2 * clampedProgress;
 
     final glowPaint = Paint()
-      ..color = AppTheme.statusGreen.withValues(alpha: 0.24)
+      ..color = AppTheme.statusGreen.withValues(alpha: 0.16)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = strokeWidth + 5
-      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 8);
+      ..strokeWidth = strokeWidth + 4
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 6);
     canvas.drawArc(rect, startAngle, sweepAngle, false, glowPaint);
 
     final arcPaint = Paint()
@@ -234,13 +252,25 @@ class _ProgressRingPainter extends CustomPainter {
       ..strokeWidth = strokeWidth;
     canvas.drawArc(rect, startAngle, sweepAngle, false, arcPaint);
 
+    // A fine illuminated core gives the active stroke a rounded surface.
+    final corePaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xB3BBF7D0), Color(0x006BE89B)],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.2;
+    canvas.drawArc(rect, startAngle, sweepAngle, false, corePaint);
+
     final endpointAngle = startAngle + sweepAngle;
     final endpoint = Offset(
       center.dx + radius * math.cos(endpointAngle),
       center.dy + radius * math.sin(endpointAngle),
     );
     final shimmerPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.7)
+      ..color = const Color(0xFFBBF7D0).withValues(alpha: 0.45)
       ..style = PaintingStyle.fill
       ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 4);
     final shimmerPulse = 2.5 + math.sin(shimmer * math.pi * 2) * 0.7;
