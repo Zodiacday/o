@@ -1,8 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_bounceable/flutter_bounceable.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
+
 import '../theme/app_theme.dart';
 
 class ManualUrlModal extends StatefulWidget {
@@ -17,194 +17,194 @@ class ManualUrlModal extends StatefulWidget {
 class _ManualUrlModalState extends State<ManualUrlModal> {
   final _textController = TextEditingController(text: 'http://');
 
+  bool get _isValid {
+    final value = _textController.text.trim();
+    return value.startsWith('http://') || value.startsWith('https://');
+  }
+
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
   }
 
+  void _setPort(String port) {
+    final current = _textController.text.trim();
+    if (!current.contains(':') ||
+        current == 'http://' ||
+        current == 'https://') {
+      _textController.text = '$current$port';
+      _textController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _textController.text.length),
+      );
+      setState(() {});
+    }
+  }
+
+  void _connect() {
+    final url = _textController.text.trim();
+    if (!_isValid) return;
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).pop();
+    widget.onConnect(url);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          padding: EdgeInsets.only(
-            left: 22,
-            right: 22,
-            top: 18,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          decoration: BoxDecoration(
-            color: const Color(0xF8000000),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(
-              color: const Color(0xFF1E2638),
-              width: 1.0,
-            ),
-          ),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          12,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        color: AppTheme.background,
+        child: SafeArea(
+          top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle Bar
               Center(
                 child: Container(
-                  width: 36,
-                  height: 4,
+                  width: 34,
+                  height: 3,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF334155),
+                    color: AppTheme.textMuted,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 22),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Manual Web Connect',
-                    style: GoogleFonts.inter(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      LucideIcons.x,
-                      size: 18,
-                      color: AppTheme.textSecondary,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _textController,
-                autofocus: true,
-                keyboardType: TextInputType.url,
-                style: GoogleFonts.jetBrainsMono(
-                  color: const Color(0xFF00E5FF),
-                  fontSize: 13,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'http://192.168.0.25:8090',
-                  hintStyle: const TextStyle(color: AppTheme.textMuted),
-                  filled: true,
-                  fillColor: const Color(0xFF000000),
-                  prefixIcon: const Icon(
-                    LucideIcons.link_2,
-                    color: Color(0xFF00E5FF),
-                    size: 16,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF1E2638)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF1E2638)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF00E5FF),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Port Presets with Bounceable
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [':8090', ':8080', ':8081', ':3000', ':5000'].map((
-                  port,
-                ) {
-                  return Bounceable(
-                    scaleFactor: 0.95,
-                    onTap: () {
-                      final current = _textController.text.trim();
-                      if (!current.contains(':') ||
-                          current.startsWith('http://') ||
-                          current.startsWith('https://')) {
-                        _textController.text = '$current$port';
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF080B11),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFF1E2638),
-                          width: 1.0,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Open preview',
+                          style: GoogleFonts.inter(
+                            color: AppTheme.textPrimary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.5,
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        port,
-                        style: GoogleFonts.jetBrainsMono(
-                          fontSize: 11,
-                          color: const Color(0xFF00E5FF),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: Bounceable(
-                  scaleFactor: 0.98,
-                  onTap: () {
-                    final url = _textController.text.trim();
-                    if (url.startsWith('http://') ||
-                        url.startsWith('https://')) {
-                      Navigator.of(context).pop();
-                      widget.onConnect(url);
-                    }
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00E5FF),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF00E5FF,
-                          ).withValues(alpha: 0.35),
-                          blurRadius: 14,
+                        const SizedBox(height: 6),
+                        Text(
+                          'Enter the URL from your Flutter terminal.',
+                          style: GoogleFonts.inter(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12.5,
+                          ),
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Text(
-                        'Connect & Launch',
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      LucideIcons.x,
+                      size: 19,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 26),
+              Semantics(
+                textField: true,
+                label: 'Preview URL',
+                hint: 'Enter an HTTP or HTTPS preview URL',
+                child: TextField(
+                  controller: _textController,
+                  autofocus: true,
+                  keyboardType: TextInputType.url,
+                  onChanged: (_) => setState(() {}),
+                  style: GoogleFonts.jetBrainsMono(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                  ),
+                  cursorColor: AppTheme.cyan,
+                  decoration: InputDecoration(
+                    hintText: 'http://192.168.0.25:8090',
+                    hintStyle: GoogleFonts.jetBrainsMono(
+                      color: AppTheme.textMuted,
+                      fontSize: 12,
+                    ),
+                    prefixIcon: const Icon(
+                      LucideIcons.link_2,
+                      color: AppTheme.textMuted,
+                      size: 17,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    border: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.previewBorder),
+                    ),
+                    enabledBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.previewBorder),
+                    ),
+                    focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: AppTheme.cyan, width: 1.2),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Common ports',
+                style: GoogleFonts.inter(
+                  color: AppTheme.textMuted,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 18,
+                children: [':8090', ':8080', ':8081', ':3000', ':5000']
+                    .map(
+                      (port) => InkWell(
+                        onTap: () => _setPort(port),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Text(
+                            port,
+                            style: GoogleFonts.jetBrainsMono(
+                              color: AppTheme.cyan,
+                              fontSize: 11,
+                            ),
+                          ),
                         ),
                       ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 22),
+              Semantics(
+                button: true,
+                enabled: _isValid,
+                label: 'Open preview',
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _isValid ? _connect : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.cyan,
+                      disabledBackgroundColor: AppTheme.previewSurfaceElevated,
+                      foregroundColor: Colors.black,
+                      disabledForegroundColor: AppTheme.textMuted,
+                      elevation: 0,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(14)),
+                      ),
                     ),
+                    child: const Text('Open preview'),
                   ),
                 ),
               ),

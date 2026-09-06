@@ -3,16 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:toastification/toastification.dart';
 import '../models/session_item.dart';
+import '../models/camera_capture_result.dart';
 import '../models/preview_connection.dart';
 import '../services/history_service.dart';
 import '../services/native_camera_service.dart';
 import '../widgets/floating_navbar.dart';
 import '../widgets/manual_url_modal.dart';
+import '../widgets/animated_grid_background.dart';
 import '../widgets/rename_dialog.dart';
 import 'app_viewer_screen.dart';
 import 'settings_screen.dart';
 import 'tabs/history_tab.dart';
-import 'tabs/presets_tab.dart';
 import 'tabs/scans_tab.dart';
 import '../theme/app_theme.dart';
 
@@ -26,7 +27,22 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   List<SessionItem> _history = [];
+  Uint8List? _capturedPhotoBytes;
   bool _isLoading = true;
+  bool _isOpeningScanner = false;
+
+  int get _safeNavIndex {
+    if (_currentNavIndex < 0 || _currentNavIndex >= FloatingNavBar.navItems.length) {
+      return 0;
+    }
+    return _currentNavIndex;
+  }
+
+  void _selectNavIndex(int index) {
+    if (index < 0 || index >= FloatingNavBar.navItems.length) return;
+    if (_currentNavIndex == index) return;
+    setState(() => _currentNavIndex = index);
+  }
 
   @override
   void initState() {
@@ -45,11 +61,51 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openScanner() async {
-    final connection = await NativeCameraService.scanWithNativeCamera(context);
+    if (_isOpeningScanner) return;
 
-    if (connection != null && mounted) {
-      _launchApp(connection.url, title: connection.projectName);
+    setState(() => _isOpeningScanner = true);
+    try {
+      final capture = await NativeCameraService.scanWithNativeCamera(context);
+
+      if (!mounted || capture == null) return;
+
+      if (capture is QrCameraCapture) {
+        await _launchApp(
+          capture.connection.url,
+          title: capture.connection.projectName,
+        );
+      } else if (capture is PhotoCameraCapture) {
+        final bytes = await capture.file.readAsBytes();
+        if (mounted) setState(() => _capturedPhotoBytes = bytes);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isOpeningScanner = false);
+      }
     }
+  }
+
+  void _clearCapturedPhoto() {
+    setState(() => _capturedPhotoBytes = null);
+  }
+
+  void _copyCliCommand() {
+    Clipboard.setData(const ClipboardData(text: 'previewport start'));
+    HapticFeedback.lightImpact();
+    toastification.show(
+      context: context,
+      type: ToastificationType.success,
+      style: ToastificationStyle.flat,
+      title: const Text('Command Copied'),
+      description: const Text(
+        'Run it in your Flutter project root to generate a QR code',
+      ),
+      alignment: Alignment.topCenter,
+      autoCloseDuration: const Duration(seconds: 2),
+      primaryColor: AppTheme.cyan,
+      backgroundColor: AppTheme.surface,
+      foregroundColor: Colors.white,
+    );
   }
 
   Future<void> _launchApp(String url, {String? title}) async {
@@ -131,96 +187,90 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: const Color(0xFF000000),
       body: Stack(
         children: [
-          // Pure Dark Background (Zero Glow)
+          // FlutterFX-inspired animated cells add depth while remaining
+          // behind every actionable surface.
+          const Positioned.fill(
+            child: AnimatedGridBackground(),
+          ),
 
-          // 2. Main Screen Layout
+          // Floating brand lockup. It intentionally has no surface or nav
+          // background so the app content remains visually uninterrupted.
           SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
               children: [
-                // Minimal Header: Left-aligned PreviewPort mark
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
+                Positioned(
+                  top: 12,
+                  left: 22,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Image.asset(
                         'assets/previewport-logo-transparent.png',
-                        width: 28,
-                        height: 28,
+                        width: 30,
+                        height: 30,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
                       ),
                       const SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: 'Preview',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: 'Port',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF00E5FF),
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ],
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Preview',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 1),
-                          Text(
-                            'LIVE FLUTTER PREVIEW',
-                            style: GoogleFonts.inter(
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textMuted,
-                              letterSpacing: 1.1,
+                            TextSpan(
+                              text: 'Port',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.cyan,
+                                letterSpacing: -0.3,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                // Tab Content Stack
-                Expanded(
-                  child: IndexedStack(
-                    index: _currentNavIndex,
+                Padding(
+                  padding: const EdgeInsets.only(top: 54),
+                  child: Column(
                     children: [
-                      ScansTab(
-                        history: _history,
-                        isLoading: _isLoading,
-                        onOpenScanner: _openScanner,
-                        onLaunchApp: _launchApp,
-                        onLongPressItem: _showRenameDialog,
+                      // Tab Content Stack
+                      Expanded(
+                        child: IndexedStack(
+                          index: _safeNavIndex,
+                          children: [
+                            ScansTab(
+                              history: _history,
+                              isLoading: _isLoading,
+                              onOpenScanner: _openScanner,
+                              onPasteUrl: _pasteFromClipboard,
+                              onEnterUrl: _showManualUrlModal,
+                              onCopyCommand: _copyCliCommand,
+                              isScannerBusy: _isOpeningScanner,
+                              onLaunchApp: _launchApp,
+                              onLongPressItem: _showRenameDialog,
+                              capturedPhotoBytes: _capturedPhotoBytes,
+                              onDismissCapturedPhoto: _clearCapturedPhoto,
+                            ),
+                            HistoryTab(
+                              history: _history,
+                              onLaunchApp: _launchApp,
+                              onLongPressItem: _showRenameDialog,
+                            ),
+                            const SettingsScreen(),
+                          ],
+                        ),
                       ),
-                      HistoryTab(
-                        history: _history,
-                        onLaunchApp: _launchApp,
-                        onLongPressItem: _showRenameDialog,
-                      ),
-                      PresetsTab(
-                        onPasteClipboard: _pasteFromClipboard,
-                        onOpenManualModal: _showManualUrlModal,
-                      ),
-                      const SettingsScreen(),
                     ],
                   ),
                 ),
@@ -228,20 +278,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // 3. Floating Frosted Capsule Bottom Navigation Bar (Centered Compact Capsule)
+          // A dedicated bottom navigation block keeps navigation distinct from
+          // the preview content without introducing a heavy floating capsule.
           Positioned(
-            bottom: 24,
-            left: 20,
-            right: 20,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: FloatingNavBar(
-                  currentIndex: _currentNavIndex,
-                  onTabSelected: (index) =>
-                      setState(() => _currentNavIndex = index),
-                ),
-              ),
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: FloatingNavBar(
+              currentIndex: _safeNavIndex,
+              onTabSelected: _selectNavIndex,
             ),
           ),
         ],

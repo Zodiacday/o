@@ -9,6 +9,12 @@ class AppTheme {
   static const Color surfaceHover = Color(0xFF0A0A0A);
   static const Color card = Color(0xFF000000);
 
+  // Homepage-only surfaces. Existing navigation and screens keep their
+  // current colors; these tokens are used by the scan-first landing surface.
+  static const Color previewSurface = Color(0xFF080808);
+  static const Color previewSurfaceElevated = Color(0xFF111111);
+  static const Color previewBorder = Color(0xFF242424);
+
   // Ethereal Electric Cyan / Sky Blue
   static const Color lightBlue = Color(0xFF38BDF8); // Electric Cyan Sky Blue
   static const Color primary = Color(0xFF38BDF8);

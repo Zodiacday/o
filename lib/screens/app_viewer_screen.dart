@@ -23,9 +23,6 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
   bool _isMenuOpen = false;
   bool _useSafeArea = false;
 
-  // Draggable position for the floating dev pill
-  Offset _pillPosition = const Offset(16, 52);
-
   @override
   void initState() {
     super.initState();
@@ -92,11 +89,6 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-
-    final clampedX = _pillPosition.dx.clamp(12.0, media.size.width - 90.0);
-    final clampedY = _pillPosition.dy.clamp(40.0, media.size.height - 120.0);
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -276,22 +268,19 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
                 ),
               ),
 
-            // 4. Draggable Floating Dev Pill
+            // Quiet viewer controls. The preview remains the visual focus;
+            // controls appear only as a small neutral affordance.
             Positioned(
-              left: clampedX,
-              top: clampedY,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  setState(() {
-                    _pillPosition = Offset(
-                      _pillPosition.dx + details.delta.dx,
-                      _pillPosition.dy + details.delta.dy,
-                    );
-                  });
-                },
-                child: _buildFloatingDevPill(),
-              ),
+              top: MediaQuery.paddingOf(context).top + 10,
+              right: 14,
+              child: _buildFloatingDevPill(),
             ),
+            if (_isMenuOpen)
+              Positioned(
+                top: MediaQuery.paddingOf(context).top + 58,
+                right: 14,
+                child: _buildExpandedMenu(),
+              ),
           ],
         ),
       ),
@@ -299,55 +288,19 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
   }
 
   Widget _buildFloatingDevPill() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        color: const Color(0xF20D1B2E), // Frosted Dark Slate Navy
-        borderRadius: BorderRadius.circular(_isMenuOpen ? 14 : 20),
-        border: Border.all(color: AppTheme.border, width: 1),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black87,
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: _isMenuOpen ? _buildExpandedMenu() : _buildCollapsedPill(),
-    );
-  }
-
-  Widget _buildCollapsedPill() {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        setState(() => _isMenuOpen = true);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: AppTheme.accent,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              'DEV',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
+    return Material(
+      color: Colors.black.withValues(alpha: 0.35),
+      shape: const CircleBorder(),
+      child: IconButton(
+        tooltip: 'Preview controls',
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          setState(() => _isMenuOpen = !_isMenuOpen);
+        },
+        icon: Icon(
+          _isMenuOpen ? Icons.close_rounded : Icons.more_horiz_rounded,
+          color: Colors.white.withValues(alpha: 0.75),
+          size: 20,
         ),
       ),
     );
@@ -355,8 +308,20 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
 
   Widget _buildExpandedMenu() {
     return Container(
-      width: 200,
-      padding: const EdgeInsets.all(10),
+      width: 218,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xF20B0B0B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.previewBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black54,
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,12 +330,11 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'DEV TOOLS',
+                'Preview controls',
                 style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textMuted,
-                  letterSpacing: 0.8,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               GestureDetector(
@@ -378,11 +342,8 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
                   HapticFeedback.selectionClick();
                   setState(() => _isMenuOpen = false);
                 },
-                child: const Icon(
-                  Icons.close_rounded,
-                  size: 16,
-                  color: AppTheme.textSecondary,
-                ),
+                child: const Icon(Icons.close_rounded,
+                    size: 16, color: AppTheme.textSecondary),
               ),
             ],
           ),
@@ -391,7 +352,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
           const SizedBox(height: 4),
           _buildMenuRow(
             icon: Icons.refresh_rounded,
-            label: 'Reload App',
+            label: 'Reload preview',
             onTap: () {
               HapticFeedback.mediumImpact();
               setState(() => _isMenuOpen = false);
@@ -400,7 +361,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
           ),
           _buildMenuRow(
             icon: Icons.cleaning_services_rounded,
-            label: 'Clear Cache',
+            label: 'Clear preview data',
             onTap: () async {
               HapticFeedback.mediumImpact();
               setState(() => _isMenuOpen = false);
@@ -412,7 +373,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
             icon: _useSafeArea
                 ? Icons.fullscreen_rounded
                 : Icons.fullscreen_exit_rounded,
-            label: _useSafeArea ? 'Full Bleed' : 'Safe Area',
+            label: _useSafeArea ? 'Use full screen' : 'Use safe area',
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() {
@@ -423,7 +384,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
           ),
           _buildMenuRow(
             icon: Icons.copy_rounded,
-            label: 'Copy URL',
+            label: 'Copy preview link',
             onTap: () {
               HapticFeedback.selectionClick();
               Clipboard.setData(ClipboardData(text: widget.url));
@@ -432,7 +393,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
                 SnackBar(
                   backgroundColor: AppTheme.surface,
                   content: Text(
-                    'URL copied to clipboard',
+                    'Preview link copied',
                     style: GoogleFonts.inter(color: Colors.white, fontSize: 12),
                   ),
                   duration: const Duration(seconds: 1),
@@ -444,7 +405,7 @@ class _AppViewerScreenState extends State<AppViewerScreen> {
           const SizedBox(height: 4),
           _buildMenuRow(
             icon: Icons.close_rounded,
-            label: 'Exit to Home',
+            label: 'Return to scanner',
             color: AppTheme.danger,
             onTap: () {
               HapticFeedback.heavyImpact();

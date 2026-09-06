@@ -7,52 +7,30 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:toastification/toastification.dart';
+import '../models/camera_capture_result.dart';
 import '../models/preview_connection.dart';
+import '../theme/app_theme.dart';
+import '../widgets/camera_scanner_modal.dart';
 import '../widgets/manual_url_modal.dart';
 
-/// Native Operating System Camera & Scanner Service
-/// Opens 100% native iOS (UIImagePickerController) and Android Camera intents,
-/// exactly matching ChatGPT and Apple's native camera presentation.
+/// PreviewPort camera and QR scanning service.
+/// Presents an in-app iOS-style camera surface for live QR detection while
+/// retaining image-based scanning for the gallery fallback.
 class NativeCameraService {
   static final ImagePicker _picker = ImagePicker();
 
-  /// Launches the native OS camera (iOS UIImagePickerController / Android Camera intent)
-  static Future<PreviewConnection?> scanWithNativeCamera(
+  /// Opens the in-app camera scanner used by the primary Scan action.
+  static Future<CameraCaptureResult?> scanWithNativeCamera(
     BuildContext context,
   ) async {
     HapticFeedback.lightImpact();
 
-    // On Web, show native platform instructions & quick connection dock
+    // On Web, preserve the clipboard/manual URL fallback.
     if (kIsWeb) {
       return _showWebTestingSheet(context);
     }
 
-    try {
-      // 1. Opens 100% genuine native Apple iOS / Android camera
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.rear,
-      );
-
-      // User canceled or dismissed native camera sheet
-      if (photo == null) {
-        return null;
-      }
-
-      // 2. Decode QR payload using Apple Vision (iOS) or ML Kit (Android)
-      if (!context.mounted) return null;
-      return await _decodePhoto(context, photo.path);
-    } catch (e) {
-      if (context.mounted) {
-        _showToast(
-          context,
-          'Camera Error',
-          e.toString(),
-          type: ToastificationType.error,
-        );
-      }
-      return null;
-    }
+    return CameraScannerModal.show(context);
   }
 
   /// Opens the native photo gallery to scan a saved QR code screenshot
@@ -62,13 +40,12 @@ class NativeCameraService {
     HapticFeedback.lightImpact();
 
     if (kIsWeb) {
-      return _showWebTestingSheet(context);
+      final result = await _showWebTestingSheet(context);
+      return result is QrCameraCapture ? result.connection : null;
     }
 
     try {
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.gallery,
-      );
+      final XFile? photo = await _picker.pickImage(source: ImageSource.gallery);
 
       if (photo == null || !context.mounted) return null;
       return await _decodePhoto(context, photo.path);
@@ -137,217 +114,171 @@ class NativeCameraService {
     return null;
   }
 
-  static Future<PreviewConnection?> _showWebTestingSheet(
+  static Future<CameraCaptureResult?> _showWebTestingSheet(
     BuildContext context,
   ) {
-    return showModalBottomSheet<PreviewConnection>(
+    return showModalBottomSheet<CameraCaptureResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
         decoration: const BoxDecoration(
           color: Color(0xFF000000),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(
-            top: BorderSide(color: Color(0xFF1E2638), width: 1),
-            left: BorderSide(color: Color(0xFF1E2638), width: 1),
-            right: BorderSide(color: Color(0xFF1E2638), width: 1),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 34,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Connect preview',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Camera preview is available on iPhone and Android.',
+                          style: GoogleFonts.inter(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    icon: const Icon(
+                      LucideIcons.x,
+                      size: 19,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildWebConnectionAction(
+                icon: LucideIcons.clipboard,
+                title: 'Paste from clipboard',
+                subtitle: 'Use a URL already copied from your terminal.',
+                onTap: () async {
+                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                  final text = data?.text?.trim();
+                  final conn = PreviewConnection.tryParse(text ?? '');
+                  if (conn != null) {
+                    HapticFeedback.mediumImpact();
+                    if (ctx.mounted) {
+                      Navigator.of(ctx).pop(QrCameraCapture(conn));
+                    }
+                  } else if (ctx.mounted) {
+                    _showToast(
+                      ctx,
+                      text != null && text.isNotEmpty
+                          ? 'Invalid URL'
+                          : 'Clipboard is empty',
+                      'Copy an http:// or https:// URL first',
+                      type: ToastificationType.warning,
+                    );
+                  }
+                },
+              ),
+              const Divider(height: 1, color: Color(0xFF141A26)),
+              _buildWebConnectionAction(
+                icon: LucideIcons.keyboard,
+                title: 'Enter URL',
+                subtitle: 'Type the preview address manually.',
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => ManualUrlModal(
+                      onConnect: (url) {
+                        final conn = PreviewConnection(
+                          url: url,
+                          projectName: 'Manual Link',
+                        );
+                        Navigator.of(context).pop(QrCameraCapture(conn));
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+    );
+  }
+
+  static Widget _buildWebConnectionAction({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Bounceable(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
           children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF263347),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+            Icon(icon, size: 18, color: AppTheme.textMuted),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 18),
-
-            Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF000000),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFF1E2638),
-                      width: 1,
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      LucideIcons.camera,
-                      size: 18,
-                      color: Color(0xFF00E5FF),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Native OS Camera Configured',
-                        style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'iOS UIImagePickerController · Android Camera Intent',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            const Icon(
+              LucideIcons.chevron_right,
+              size: 16,
+              color: AppTheme.textMuted,
             ),
-            const SizedBox(height: 14),
-
-            Text(
-              'On real iPhone & Android devices, tapping "Tap to Scan" opens the 100% native camera sheet (exactly like ChatGPT). For testing on desktop web, use instant clipboard or manual entry below:',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: const Color(0xFF94A3B8),
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: Bounceable(
-                    onTap: () async {
-                      final data = await Clipboard.getData(Clipboard.kTextPlain);
-                      final text = data?.text?.trim();
-                      final conn = PreviewConnection.tryParse(text ?? '');
-                      if (conn != null) {
-                        HapticFeedback.mediumImpact();
-                        if (ctx.mounted) {
-                          Navigator.of(ctx).pop(conn);
-                        }
-                      } else {
-                        if (ctx.mounted) {
-                          _showToast(
-                            ctx,
-                            text != null && text.isNotEmpty
-                                ? 'Invalid Clipboard URL'
-                                : 'Clipboard is Empty',
-                            'Copy an http:// or previewport:// URL first',
-                            type: ToastificationType.warning,
-                          );
-                        }
-                      }
-                    },
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFF1E2638),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            LucideIcons.clipboard,
-                            size: 15,
-                            color: Color(0xFF00E5FF),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Paste Clipboard',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-
-                Expanded(
-                  child: Bounceable(
-                    onTap: () {
-                      Navigator.of(ctx).pop();
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: const Color(0xFF000000),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                        ),
-                        builder: (_) => ManualUrlModal(
-                          onConnect: (url, {title}) {
-                            final conn = PreviewConnection(
-                              url: url,
-                              projectName: title ?? 'Manual Link',
-                            );
-                            Navigator.of(context).pop(conn);
-                          },
-                        ),
-                      );
-                    },
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: const Color(0xFF1E2638),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            LucideIcons.keyboard,
-                            size: 15,
-                            color: Color(0xFF94A3B8),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Enter Manually',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -371,8 +302,8 @@ class NativeCameraService {
       primaryColor: type == ToastificationType.success
           ? const Color(0xFF00E5FF)
           : (type == ToastificationType.error
-              ? const Color(0xFFEF4444)
-              : const Color(0xFFFFD60A)),
+                ? const Color(0xFFEF4444)
+                : const Color(0xFFFFD60A)),
       backgroundColor: const Color(0xFF000000),
       foregroundColor: Colors.white,
     );

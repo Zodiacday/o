@@ -1,11 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bounceable/flutter_bounceable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:toastification/toastification.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../theme/app_theme.dart';
 
 class CacheOption {
   final String id;
@@ -29,7 +29,7 @@ class CacheManagementModal extends StatefulWidget {
   const CacheManagementModal({super.key, required this.onCleared});
 
   static void show(BuildContext context, {required VoidCallback onCleared}) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -45,52 +45,80 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
   static const List<CacheOption> _options = [
     CacheOption(
       id: 'bundles',
-      title: 'JavaScript Bundles & Assets',
-      subtitle: 'Cached Dart2Wasm binaries, scripts & web resources',
+      title: 'Preview assets',
+      subtitle: 'Web files kept for faster reloads',
       sizeMb: 2.6,
       icon: LucideIcons.file_code,
     ),
     CacheOption(
       id: 'cookies',
-      title: 'Session Cookies & Auth Tokens',
-      subtitle: 'Saved login states, session identifiers & headers',
+      title: 'Session data',
+      subtitle: 'Cookies and temporary connection state',
       sizeMb: 0.4,
       icon: LucideIcons.cookie,
     ),
     CacheOption(
       id: 'storage',
-      title: 'LocalStorage & Client Databases',
-      subtitle: 'IndexedDB, web storage key-values & form data',
+      title: 'Local preferences',
+      subtitle: 'Temporary values used by a preview',
       sizeMb: 0.8,
       icon: LucideIcons.database,
     ),
   ];
 
-  late Set<String> _selectedIds;
+  double get _totalSize =>
+      _options.fold(0.0, (total, option) => total + option.sizeMb);
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedIds = _options.map((e) => e.id).toSet();
+  Future<void> _confirmClear() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppTheme.previewSurfaceElevated,
+        title: Text(
+          'Clear web cache?',
+          style: GoogleFonts.inter(
+            color: AppTheme.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'Temporary preview data will be removed. Your session history will stay intact.',
+          style: GoogleFonts.inter(
+            color: AppTheme.textSecondary,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              'Clear cache',
+              style: TextStyle(color: AppTheme.cyan),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) await _performClear();
   }
 
-  double get _selectedSize {
-    return _options
-        .where((e) => _selectedIds.contains(e.id))
-        .fold(0.0, (acc, e) => acc + e.sizeMb);
-  }
-
-  Future<void> _performClear({required bool all}) async {
+  Future<void> _performClear() async {
     HapticFeedback.mediumImpact();
 
     try {
-      final cookieManager = WebViewCookieManager();
-      await cookieManager.clearCookies();
-    } catch (_) {}
+      await WebViewCookieManager().clearCookies();
+    } catch (_) {
+      // The webview platform may not be available on every desktop target.
+    }
 
     if (!mounted) return;
-
-    final clearedMb = all ? 3.8 : _selectedSize;
     Navigator.of(context).pop();
     widget.onCleared();
 
@@ -99,307 +127,214 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
       type: ToastificationType.success,
       style: ToastificationStyle.flat,
       title: Text(
-        all ? 'All Web Storage Purged' : 'Selected Cache Cleared',
+        'Web cache cleared',
         style: GoogleFonts.inter(
           fontWeight: FontWeight.w600,
-          color: Colors.white,
+          color: AppTheme.textPrimary,
           fontSize: 13,
         ),
       ),
       description: Text(
-        'Reclaimed ${clearedMb.toStringAsFixed(1)} MB of device storage',
+        'Removed ${_totalSize.toStringAsFixed(1)} MB of temporary data',
         style: GoogleFonts.inter(
-          color: const Color(0xFF94A3B8),
+          color: AppTheme.textSecondary,
           fontSize: 11,
         ),
       ),
       alignment: Alignment.topCenter,
       autoCloseDuration: const Duration(seconds: 3),
-      primaryColor: const Color(0xFF00E5FF),
-      backgroundColor: const Color(0xFF080B11),
-      foregroundColor: Colors.white,
+      primaryColor: AppTheme.cyan,
+      backgroundColor: AppTheme.previewSurfaceElevated,
+      foregroundColor: AppTheme.textPrimary,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          decoration: BoxDecoration(
-            color: const Color(0xF8000000),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: Border.all(
-              color: const Color(0xFF1E2638),
-              width: 1.0,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag Handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF334155),
-                    borderRadius: BorderRadius.circular(2),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: Container(
+        height: media.size.height * 0.64,
+        color: AppTheme.background,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 34,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: AppTheme.textMuted,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Header Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Web Cache & Storage',
-                        style: GoogleFonts.inter(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Select items to purge from preview engine',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF080B11),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      '${_selectedSize.toStringAsFixed(1)} MB',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF00E5FF),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              // Customizable Cache Categories
-              ..._options.map((option) {
-                final isSelected = _selectedIds.contains(option.id);
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Bounceable(
-                    scaleFactor: 0.98,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        if (isSelected) {
-                          _selectedIds.remove(option.id);
-                        } else {
-                          _selectedIds.add(option.id);
-                        }
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF0D121B)
-                            : const Color(0xFF05080E),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF2E3D52)
-                              : const Color(0xFF1E2638),
-                          width: 1.0,
-                        ),
-                      ),
-                      child: Row(
+                const SizedBox(height: 22),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Custom Checkbox
-                          Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF00E5FF)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF00E5FF)
-                                    : const Color(0xFF64748B),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: isSelected
-                                ? const Icon(
-                                    LucideIcons.check,
-                                    size: 13,
-                                    color: Colors.black,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 12),
-
-                          // Option Icon
-                          Icon(
-                            option.icon,
-                            size: 18,
-                            color: isSelected
-                                ? const Color(0xFF00E5FF)
-                                : const Color(0xFF64748B),
-                          ),
-                          const SizedBox(width: 12),
-
-                          // Titles
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  option.title,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  option.subtitle,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10.5,
-                                    color: const Color(0xFF94A3B8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-
-                          // Size Badge
                           Text(
-                            '${option.sizeMb.toStringAsFixed(1)} MB',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 11,
-                              color: const Color(0xFF64748B),
+                            'Web cache',
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Temporary data kept for faster previews.',
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12.5,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 16),
-
-              // Action Buttons Row
-              Row(
-                children: [
-                  // Purge All Danger Button
-                  Expanded(
-                    flex: 1,
-                    child: Bounceable(
-                      scaleFactor: 0.96,
-                      onTap: () => _performClear(all: true),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1014),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(0xFFEF4444).withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Purge All',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFEF4444),
-                            ),
-                          ),
-                        ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        LucideIcons.x,
+                        size: 19,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Clear Selected Button
-                  Expanded(
-                    flex: 2,
-                    child: Bounceable(
-                      scaleFactor: 0.97,
-                      onTap: _selectedIds.isEmpty
-                          ? null
-                          : () => _performClear(all: false),
-                      child: Opacity(
-                        opacity: _selectedIds.isEmpty ? 0.4 : 1.0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF131A26),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: const Color(0xFF263347),
-                              width: 1.0,
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.hard_drive,
+                      size: 18,
+                      color: AppTheme.cyan,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Estimated storage',
+                      style: GoogleFonts.inter(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${_totalSize.toStringAsFixed(1)} MB',
+                      style: GoogleFonts.jetBrainsMono(
+                        color: AppTheme.textPrimary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: _options.length,
+                    separatorBuilder: (_, _) => const Divider(
+                      height: 1,
+                      color: AppTheme.borderSubtle,
+                    ),
+                    itemBuilder: (_, index) {
+                      final option = _options[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          children: [
+                            Icon(
+                              option.icon,
+                              size: 18,
+                              color: AppTheme.textMuted,
                             ),
-                          ),
-                          child: Center(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  LucideIcons.trash_2,
-                                  size: 14,
-                                  color: Color(0xFF00E5FF),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Clear Selected (${_selectedIds.length})',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    option.title,
+                                    style: GoogleFonts.inter(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    option.subtitle,
+                                    style: GoogleFonts.inter(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${option.sizeMb.toStringAsFixed(1)} MB',
+                              style: GoogleFonts.jetBrainsMono(
+                                color: AppTheme.textMuted,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Semantics(
+                  button: true,
+                  label: 'Clear web cache',
+                  child: InkWell(
+                    onTap: _confirmClear,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.trash_2,
+                            size: 16,
+                            color: AppTheme.cyan,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Clear web cache',
+                            style: GoogleFonts.inter(
+                              color: AppTheme.cyan,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
+                          const Spacer(),
+                          const Icon(
+                            LucideIcons.chevron_right,
+                            size: 15,
+                            color: AppTheme.cyan,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

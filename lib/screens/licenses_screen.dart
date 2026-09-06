@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:toastification/toastification.dart';
 
+import '../theme/app_theme.dart';
+
 class LicensePackageInfo {
   final String name;
   final String version;
@@ -267,200 +269,148 @@ class _LicensesScreenState extends State<LicensesScreen> {
   Widget build(BuildContext context) {
     final filtered = kOpenSourcePackages.where((pkg) {
       if (_searchQuery.isEmpty) return true;
-      final q = _searchQuery.toLowerCase();
-      return pkg.name.toLowerCase().contains(q) ||
-          pkg.description.toLowerCase().contains(q) ||
-          pkg.licenseType.toLowerCase().contains(q);
+      final query = _searchQuery.toLowerCase();
+      return pkg.name.toLowerCase().contains(query) ||
+          pkg.description.toLowerCase().contains(query) ||
+          pkg.licenseType.toLowerCase().contains(query);
     }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF000000),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Column(
           children: [
-            // Top Navigation Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFF000000),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0xFF1E2638),
-                    width: 1,
-                  ),
-                ),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 24, 16),
               child: Row(
                 children: [
-                  Bounceable(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFF1E2638),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Center(
+                  Semantics(
+                    button: true,
+                    label: 'Back',
+                    child: Bounceable(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
                         child: Icon(
                           LucideIcons.arrow_left,
-                          color: Colors.white,
-                          size: 18,
+                          color: AppTheme.textPrimary,
+                          size: 21,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Open Source Licenses',
+                          'Open-source licenses',
                           style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        const SizedBox(height: 1),
+                        const SizedBox(height: 5),
                         Text(
-                          'Core engine dependencies & libraries',
+                          'The software that helps PreviewPort run.',
                           style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: const Color(0xFF94A3B8),
+                            fontSize: 12.5,
+                            color: AppTheme.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF000000),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: const Color(0xFF00E5FF).withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      '${kOpenSourcePackages.length} PKGS',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF00E5FF),
-                      ),
+                  Text(
+                    '${kOpenSourcePackages.length} libraries',
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 10.5,
+                      color: AppTheme.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Search Bar Filter
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF000000),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0xFF1E2638),
-                    width: 0.5,
-                  ),
-                ),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
               child: Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF000000),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFF1E2638),
-                    width: 1,
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: AppTheme.previewBorder),
                   ),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       LucideIcons.search,
-                      color: Color(0xFF64748B),
-                      size: 15,
+                      color: AppTheme.textMuted,
+                      size: 16,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
-                        onChanged: (val) => setState(() => _searchQuery = val),
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
                         style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: Colors.white,
+                          fontSize: 13,
+                          color: AppTheme.textPrimary,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Search packages by name or license...',
+                          hintText: 'Search libraries',
                           hintStyle: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF64748B),
+                            fontSize: 13,
+                            color: AppTheme.textMuted,
                           ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: EdgeInsets.zero,
+                          contentPadding: const EdgeInsets.only(bottom: 10),
                         ),
                       ),
                     ),
                     if (_searchQuery.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => setState(() => _searchQuery = ''),
-                        child: const Icon(
-                          LucideIcons.x,
-                          color: Color(0xFF94A3B8),
-                          size: 14,
+                      Semantics(
+                        button: true,
+                        label: 'Clear search',
+                        child: GestureDetector(
+                          onTap: () => setState(() => _searchQuery = ''),
+                          child: const Padding(
+                            padding: EdgeInsets.only(left: 8, bottom: 8),
+                            child: Icon(
+                              LucideIcons.x,
+                              color: AppTheme.textSecondary,
+                              size: 15,
+                            ),
+                          ),
                         ),
                       ),
                   ],
                 ),
               ),
             ),
-
-            // Packages List
             Expanded(
               child: filtered.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            LucideIcons.package_open,
-                            color: Color(0xFF475569),
-                            size: 36,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No matching licenses found',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        'No matching licenses found',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                        ),
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(24, 4, 24, 32),
                       itemCount: filtered.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final pkg = filtered[index];
-                        return _buildPackageCard(pkg);
-                      },
+                      separatorBuilder: (context, index) => const Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: AppTheme.borderSubtle,
+                      ),
+                      itemBuilder: (context, index) =>
+                          _buildPackageRow(filtered[index]),
                     ),
             ),
           ],
@@ -469,274 +419,202 @@ class _LicensesScreenState extends State<LicensesScreen> {
     );
   }
 
-  Widget _buildPackageCard(LicensePackageInfo pkg) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF000000),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFF1E2638),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
+  Widget _buildPackageRow(LicensePackageInfo pkg) {
+    return Semantics(
+      button: true,
+      label: '${pkg.name}, ${pkg.licenseType}',
+      hint: 'Opens the full license text',
+      child: Bounceable(
+        scaleFactor: 0.99,
+        onTap: () => _showLicenseDetails(pkg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
                             pkg.name,
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: AppTheme.textPrimary,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            pkg.version,
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 11,
-                              color: const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        pkg.description,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF94A3B8),
-                          height: 1.35,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF000000),
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                      color: const Color(0xFF1E2638),
-                      width: 1,
+                        const SizedBox(width: 8),
+                        Text(
+                          pkg.version,
+                          style: GoogleFonts.jetBrainsMono(
+                            fontSize: 10.5,
+                            color: AppTheme.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  child: Text(
+                    const SizedBox(height: 6),
+                    Text(
+                      pkg.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      pkg.author,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
                     pkg.licenseType,
+                    textAlign: TextAlign.right,
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF00E5FF),
+                      color: AppTheme.cyan,
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(
-            height: 1,
-            thickness: 1,
-            color: Color(0xFF141A26),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  pkg.author,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: const Color(0xFF475569),
+                  const SizedBox(height: 25),
+                  const Icon(
+                    LucideIcons.chevron_right,
+                    size: 16,
+                    color: AppTheme.textMuted,
                   ),
-                ),
-                Bounceable(
-                  onTap: () => _showLicenseDetails(pkg),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Read Agreement',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF00E5FF),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        LucideIcons.chevron_right,
-                        size: 12,
-                        color: Color(0xFF00E5FF),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   void _showLicenseDetails(LicensePackageInfo pkg) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.78,
+        height: MediaQuery.of(ctx).size.height * 0.84,
         decoration: const BoxDecoration(
-          color: Color(0xFF000000),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          color: AppTheme.background,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           border: Border(
-            top: BorderSide(color: Color(0xFF1E2638), width: 1),
-            left: BorderSide(color: Color(0xFF1E2638), width: 1),
-            right: BorderSide(color: Color(0xFF1E2638), width: 1),
+            top: BorderSide(color: AppTheme.previewBorder),
           ),
         ),
-        child: Column(
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 8),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E2638),
-                  borderRadius: BorderRadius.circular(2),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 8),
+                child: Container(
+                  width: 34,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    color: AppTheme.previewBorder,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
-            ),
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          pkg.name,
-                          style: GoogleFonts.jetBrainsMono(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${pkg.licenseType} License · ${pkg.author}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Bounceable(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: pkg.fullLicense));
-                      toastification.show(
-                        context: context,
-                        type: ToastificationType.success,
-                        style: ToastificationStyle.flat,
-                        title: Text('Copied ${pkg.name} license'),
-                        alignment: Alignment.topCenter,
-                        autoCloseDuration: const Duration(seconds: 2),
-                        primaryColor: const Color(0xFF00E5FF),
-                        backgroundColor: const Color(0xFF000000),
-                        foregroundColor: Colors.white,
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF000000),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: const Color(0xFF1E2638),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 18, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            LucideIcons.copy,
-                            size: 13,
-                            color: Color(0xFF00E5FF),
-                          ),
-                          const SizedBox(width: 6),
                           Text(
-                            'Copy Text',
+                            pkg.name,
+                            style: GoogleFonts.jetBrainsMono(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '${pkg.licenseType} · ${pkg.author}',
                             style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF00E5FF),
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(
-              height: 1,
-              thickness: 1,
-              color: Color(0xFF141A26),
-            ),
-            // Text area
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF05070B),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFF1E2638),
-                      width: 1,
+                    Semantics(
+                      button: true,
+                      label: 'Copy ${pkg.name} license',
+                      child: IconButton(
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: pkg.fullLicense),
+                          );
+                          HapticFeedback.lightImpact();
+                          toastification.show(
+                            context: context,
+                            type: ToastificationType.success,
+                            style: ToastificationStyle.flat,
+                            title: Text('Copied ${pkg.name} license'),
+                            alignment: Alignment.topCenter,
+                            autoCloseDuration: const Duration(seconds: 2),
+                            primaryColor: AppTheme.cyan,
+                            backgroundColor: AppTheme.surface,
+                            foregroundColor: AppTheme.textPrimary,
+                          );
+                        },
+                        tooltip: 'Copy license text',
+                        icon: const Icon(
+                          LucideIcons.copy,
+                          size: 17,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: AppTheme.borderSubtle,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 22, 24, 40),
                   child: SelectableText(
                     pkg.fullLicense,
                     style: GoogleFonts.jetBrainsMono(
-                      fontSize: 11,
-                      color: const Color(0xFFCBD5E1),
-                      height: 1.5,
+                      fontSize: 11.5,
+                      height: 1.55,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
