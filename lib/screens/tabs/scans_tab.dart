@@ -8,12 +8,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import '../../models/session_item.dart';
+import '../../models/nearby_preview.dart';
 import '../../services/network_status_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/hero_scan_card.dart';
 import '../../widgets/share_qr_modal.dart';
 
 class ScansTab extends StatelessWidget {
+  final ScrollController? scrollController;
   final List<SessionItem> history;
   final bool isLoading;
   final VoidCallback onOpenScanner;
@@ -27,9 +29,12 @@ class ScansTab extends StatelessWidget {
   final void Function(SessionItem item)? onDeleteItem;
   final Uint8List? capturedPhotoBytes;
   final VoidCallback? onDismissCapturedPhoto;
+  final List<NearbyPreview> nearbyPreviews;
+  final void Function(NearbyPreview preview)? onOpenNearbyPreview;
 
   const ScansTab({
     super.key,
+    this.scrollController,
     required this.history,
     required this.isLoading,
     required this.onOpenScanner,
@@ -43,11 +48,14 @@ class ScansTab extends StatelessWidget {
     this.onDeleteItem,
     this.capturedPhotoBytes,
     this.onDismissCapturedPhoto,
+    this.nearbyPreviews = const [],
+    this.onOpenNearbyPreview,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListView(
+      controller: scrollController,
       padding: const EdgeInsets.only(left: 22, right: 22, top: 26, bottom: 120),
       children: [
         const SizedBox(height: 2),
@@ -69,6 +77,44 @@ class ScansTab extends StatelessWidget {
         if (capturedPhotoBytes != null) ...[
           _buildCapturedPhotoCard(context),
           const SizedBox(height: 24),
+        ],
+
+        if (nearbyPreviews.isNotEmpty) ...[
+          Row(
+            children: [
+              const Icon(LucideIcons.radio, size: 15, color: AppTheme.cyan),
+              const SizedBox(width: 7),
+              Text(
+                'Nearby previews',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
+          ).animate().fadeIn(delay: 80.ms, duration: 300.ms),
+          const SizedBox(height: 12),
+          ...nearbyPreviews.asMap().entries.map((entry) {
+            final index = entry.key;
+            final preview = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildShowcaseRow(
+                context: context,
+                iconWidget: _buildNearbyLogo(),
+                title: preview.projectName,
+                subtitle: '${preview.displayEndpoint} · Available now',
+                onTap: () => onOpenNearbyPreview?.call(preview),
+                semanticLabel: 'Open nearby ${preview.projectName} preview',
+              ),
+            ).animate().fadeIn(
+              delay: Duration(milliseconds: 100 + index * 40),
+              duration: 280.ms,
+            );
+          }),
+          const SizedBox(height: 26),
         ],
 
         Row(
@@ -113,54 +159,16 @@ class ScansTab extends StatelessWidget {
             ),
           )
         else if (history.isEmpty)
-          // Consistent Minimalist Empty State
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
-            decoration: BoxDecoration(
-              color: AppTheme.previewSurface,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.previewBorder),
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                      width: 40,
-                      height: 40,
-                    decoration: BoxDecoration(
-                      color: AppTheme.previewSurfaceElevated,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.previewBorder,
-                        width: 1.0,
-                      ),
-                    ),
-                    child: const Icon(
-                      LucideIcons.scan_line,
-                      color: Color(0xFF64748B),
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No previews yet',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Run previewport start to begin.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      color: const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'No previews yet',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF64748B),
+                ),
               ),
             ),
           ).animate().fadeIn(delay: 150.ms, duration: 300.ms)
@@ -335,6 +343,24 @@ class ScansTab extends StatelessWidget {
       'assets/previewport-logo-transparent.png',
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
+    );
+  }
+
+  Widget _buildNearbyLogo() {
+    return Container(
+      width: 40,
+      height: 40,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: AppTheme.cyan.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.cyan.withValues(alpha: 0.35)),
+      ),
+      child: Image.asset(
+        'assets/previewport-logo-transparent.png',
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      ),
     );
   }
 

@@ -49,32 +49,32 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
 
     final details = switch (_state) {
       NetworkState.wifiReady => (
-          title: 'Same Wi-Fi recommended',
-          description:
-              'For local previews, keep your phone and development computer on the same Wi-Fi network.',
-          icon: LucideIcons.wifi,
-          color: AppTheme.cyan,
-        ),
+        title: 'Same Wi-Fi usually works best',
+        description:
+            'For local previews, keep your phone and development computer on the same Wi-Fi network.',
+        icon: LucideIcons.wifi,
+        color: AppTheme.cyan,
+      ),
       NetworkState.cellularHotspot => (
-          title: 'Cellular connection',
-          description:
-              'A local preview works through a phone hotspot or a URL that is reachable over the internet.',
-          icon: LucideIcons.signal,
-          color: AppTheme.warning,
-        ),
+        title: 'Cellular connection',
+        description:
+            'A local preview works through a phone hotspot or a URL that is reachable over the internet.',
+        icon: LucideIcons.signal,
+        color: AppTheme.warning,
+      ),
       NetworkState.offline => (
-          title: 'Offline',
-          description:
-              'Connect to Wi-Fi or cellular data before opening a preview.',
-          icon: LucideIcons.wifi_off,
-          color: AppTheme.danger,
-        ),
+        title: 'Offline',
+        description:
+            'Connect to Wi-Fi or cellular data before opening a preview.',
+        icon: LucideIcons.wifi_off,
+        color: AppTheme.danger,
+      ),
       NetworkState.unknown => (
-          title: 'Checking network',
-          description: 'PreviewPort is checking the device connection.',
-          icon: LucideIcons.loader,
-          color: AppTheme.textSecondary,
-        ),
+        title: 'Checking network',
+        description: 'PreviewPort is checking the device connection.',
+        icon: LucideIcons.loader,
+        color: AppTheme.textSecondary,
+      ),
     };
 
     showModalBottomSheet<void>(
@@ -161,10 +161,22 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
   @override
   Widget build(BuildContext context) {
     final details = switch (_state) {
-      NetworkState.wifiReady => (color: AppTheme.cyan, label: 'Same Wi-Fi recommended'),
-      NetworkState.cellularHotspot => (color: AppTheme.warning, label: 'Cellular connection'),
-      NetworkState.offline => (color: AppTheme.danger, label: 'Offline — connect to a network'),
-      NetworkState.unknown => (color: AppTheme.textSecondary, label: 'Checking network…'),
+      NetworkState.wifiReady => (
+        color: AppTheme.cyan,
+        label: 'Same Wi-Fi usually works best',
+      ),
+      NetworkState.cellularHotspot => (
+        color: AppTheme.warning,
+        label: 'Cellular connection',
+      ),
+      NetworkState.offline => (
+        color: AppTheme.danger,
+        label: 'Offline — connect to a network',
+      ),
+      NetworkState.unknown => (
+        color: AppTheme.textSecondary,
+        label: 'Checking network…',
+      ),
     };
 
     return Semantics(

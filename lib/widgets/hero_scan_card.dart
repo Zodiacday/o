@@ -53,15 +53,6 @@ class HeroScanCard extends StatelessWidget {
                       letterSpacing: -0.55,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Scan the QR code from your terminal.',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -101,10 +92,10 @@ class HeroScanCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Center(child: NetworkStatusPill(service: networkService)),
         const SizedBox(height: 13),
         _buildCommandLink(),
+        const SizedBox(height: 4),
+        Center(child: NetworkStatusPill(service: networkService)),
       ],
     );
   }
@@ -112,7 +103,7 @@ class HeroScanCard extends StatelessWidget {
   Widget _buildScanSurface() {
     return Semantics(
       button: true,
-      label: isBusy ? 'Opening scanner' : 'Ready to scan',
+      label: isBusy ? 'Opening scanner' : 'Tap to scan QR code',
       hint: isBusy ? 'Please wait' : 'Opens the in-app QR scanner',
       enabled: !isBusy,
       child: Bounceable(
@@ -129,9 +120,7 @@ class HeroScanCard extends StatelessWidget {
           child: Container(
             height: 164,
             decoration: BoxDecoration(
-              color: isBusy
-                  ? AppTheme.previewSurfaceElevated
-                  : AppTheme.cyan,
+              color: isBusy ? AppTheme.previewSurfaceElevated : AppTheme.cyan,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: AppTheme.previewBorder.withValues(alpha: 0.72),
@@ -177,20 +166,11 @@ class HeroScanCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Ready to scan',
+                            'Tap to scan QR code',
                             style: GoogleFonts.inter(
                               color: Colors.black,
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'Scan preview',
-                            style: GoogleFonts.inter(
-                              color: Colors.black.withValues(alpha: 0.68),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -218,22 +198,28 @@ class HeroScanCard extends StatelessWidget {
           HapticFeedback.lightImpact();
           onTap();
         },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: AppTheme.cyan),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppTheme.cyan.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 14, color: AppTheme.cyan),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -241,11 +227,7 @@ class HeroScanCard extends StatelessWidget {
   }
 
   Widget _buildActionDivider() {
-    return Container(
-      width: 1,
-      height: 14,
-      color: AppTheme.previewBorder,
-    );
+    return Container(width: 1, height: 14, color: AppTheme.previewBorder);
   }
 
   Widget _buildCommandLink() {

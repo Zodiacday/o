@@ -1,12 +1,18 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:toastification/toastification.dart';
 import '../models/session_item.dart';
 import '../models/camera_capture_result.dart';
 import '../models/preview_connection.dart';
+import '../models/nearby_preview.dart';
 import '../services/history_service.dart';
 import '../services/native_camera_service.dart';
+import '../services/nearby_preview_discovery_service.dart';
 import '../widgets/floating_navbar.dart';
 import '../widgets/manual_url_modal.dart';
 import '../widgets/animated_grid_background.dart';
@@ -24,15 +30,20 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentNavIndex = 0;
   List<SessionItem> _history = [];
   Uint8List? _capturedPhotoBytes;
   bool _isLoading = true;
   bool _isOpeningScanner = false;
+  late final ScrollController _scanScrollController;
+  late final NearbyPreviewDiscoveryService _nearbyDiscovery;
+  List<NearbyPreview> _nearbyPreviews = const [];
+  bool _appIsActive = true;
 
   int get _safeNavIndex {
-    if (_currentNavIndex < 0 || _currentNavIndex >= FloatingNavBar.navItems.length) {
+    if (_currentNavIndex < 0 ||
+        _currentNavIndex >= FloatingNavBar.navItems.length) {
       return 0;
     }
     return _currentNavIndex;
@@ -42,12 +53,36 @@ class _HomeScreenState extends State<HomeScreen> {
     if (index < 0 || index >= FloatingNavBar.navItems.length) return;
     if (_currentNavIndex == index) return;
     setState(() => _currentNavIndex = index);
+    unawaited(_syncNearbyDiscovery());
   }
 
   @override
   void initState() {
     super.initState();
+    _scanScrollController = ScrollController();
+    _nearbyDiscovery = NearbyPreviewDiscoveryService(
+      onChanged: (previews) {
+        if (mounted) setState(() => _nearbyPreviews = previews);
+      },
+      onError: (_) {},
+    );
+    WidgetsBinding.instance.addObserver(this);
     _loadHistory();
+    unawaited(_syncNearbyDiscovery());
+  }
+
+  Future<void> _syncNearbyDiscovery() async {
+    if (kIsWeb || !_appIsActive || _safeNavIndex != 0) {
+      await _nearbyDiscovery.stop();
+      return;
+    }
+    await _nearbyDiscovery.start();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appIsActive = state == AppLifecycleState.resumed;
+    unawaited(_syncNearbyDiscovery());
   }
 
   Future<void> _loadHistory() async {
@@ -113,6 +148,8 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadHistory();
 
     if (!mounted) return;
+    await _nearbyDiscovery.stop();
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AppViewerScreen(url: url, title: title),
@@ -120,6 +157,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     _loadHistory();
+    unawaited(_syncNearbyDiscovery());
+  }
+
+  Future<void> _openNearbyPreview(NearbyPreview preview) async {
+    final uri = Uri.tryParse(preview.url);
+    if (uri == null || uri.host.isEmpty) return;
+
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 2));
+      if (response.statusCode < 200 || response.statusCode >= 400) {
+        throw StateError('Preview returned HTTP ${response.statusCode}');
+      }
+      await _launchApp(preview.url, title: preview.projectName);
+    } catch (_) {
+      if (!mounted) return;
+      toastification.show(
+        context: context,
+        type: ToastificationType.warning,
+        style: ToastificationStyle.flat,
+        title: const Text('Preview unavailable'),
+        description: Text(
+          '${preview.projectName} is no longer reachable on this network.',
+        ),
+        alignment: Alignment.topCenter,
+        autoCloseDuration: const Duration(seconds: 3),
+        primaryColor: AppTheme.cyan,
+        backgroundColor: AppTheme.surface,
+        foregroundColor: Colors.white,
+      );
+    }
   }
 
   Future<void> _pasteFromClipboard() async {
@@ -189,8 +256,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // FlutterFX-inspired animated cells add depth while remaining
           // behind every actionable surface.
-          const Positioned.fill(
-            child: AnimatedGridBackground(),
+          Positioned.fill(
+            child: AnimatedGridBackground(
+              scrollController: _scanScrollController,
+            ),
           ),
 
           // Floating brand lockup. It intentionally has no surface or nav
@@ -250,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           index: _safeNavIndex,
                           children: [
                             ScansTab(
+                              scrollController: _scanScrollController,
                               history: _history,
                               isLoading: _isLoading,
                               onOpenScanner: _openScanner,
@@ -261,6 +331,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               onLongPressItem: _showRenameDialog,
                               capturedPhotoBytes: _capturedPhotoBytes,
                               onDismissCapturedPhoto: _clearCapturedPhoto,
+                              nearbyPreviews: _nearbyPreviews,
+                              onOpenNearbyPreview: _openNearbyPreview,
                             ),
                             HistoryTab(
                               history: _history,
@@ -292,5 +364,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scanScrollController.dispose();
+    unawaited(_nearbyDiscovery.dispose());
+    super.dispose();
   }
 }

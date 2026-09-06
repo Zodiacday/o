@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:previewport/models/session_item.dart';
+import 'package:previewport/models/nearby_preview.dart';
 import 'package:previewport/services/network_status_service.dart';
 import 'package:previewport/screens/tabs/scans_tab.dart';
 import 'package:previewport/widgets/hero_scan_card.dart';
@@ -53,13 +54,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Connect to a Flutter preview'), findsOneWidget);
-    expect(find.text('Scan the QR code from your terminal.'), findsOneWidget);
-    expect(find.text('Ready to scan'), findsOneWidget);
-    expect(find.text('Scan preview'), findsOneWidget);
+    expect(find.text('Scan the QR code from your terminal.'), findsNothing);
+    expect(find.text('Tap to scan QR code'), findsOneWidget);
+    expect(find.text('Ready to scan'), findsNothing);
+    expect(find.text('Scan preview'), findsNothing);
     expect(find.text('Paste URL'), findsOneWidget);
     expect(find.text('Enter URL'), findsOneWidget);
 
-    await tester.tap(find.text('Scan preview'));
+    await tester.tap(find.text('Tap to scan QR code'));
     await tester.tap(find.text('Paste URL'));
     await tester.tap(find.text('Enter URL'));
     await tester.tap(find.byKey(const Key('copy-cli-command')));
@@ -93,6 +95,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Opening scanner…'), findsOneWidget);
+    expect(find.text('Tap to scan QR code'), findsNothing);
     expect(find.text('Ready to scan'), findsNothing);
     expect(find.text('Scan preview'), findsNothing);
     expect(find.text('Opening scanner…'), findsWidgets);
@@ -121,7 +124,7 @@ void main() {
 
     expect(find.text('Recent previews'), findsOneWidget);
     expect(find.text('No previews yet'), findsOneWidget);
-    expect(find.text('Run previewport start to begin.'), findsOneWidget);
+    expect(find.text('Run previewport start to begin.'), findsNothing);
     expect(find.text(r'$ previewport'), findsNothing);
   });
 
@@ -162,9 +165,53 @@ void main() {
     expect(launchedUrl, url);
   });
 
+  testWidgets('nearby preview appears above recent previews and opens on tap', (
+    tester,
+  ) async {
+    const url = 'http://192.168.0.25:8082/';
+    var opened = '';
+
+    await tester.pumpWidget(
+      _app(
+        ScansTab(
+          history: const [],
+          isLoading: false,
+          onOpenScanner: () {},
+          onPasteUrl: () {},
+          onEnterUrl: () {},
+          onCopyCommand: () {},
+          onLaunchApp: (value, {title}) {},
+          onLongPressItem: (_) {},
+          nearbyPreviews: const [
+            NearbyPreview(
+              id: 'nearby-1',
+              projectName: 'Sink',
+              url: url,
+              host: '192.168.0.25',
+              port: 8082,
+            ),
+          ],
+          onOpenNearbyPreview: (preview) => opened = preview.url,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Nearby previews'), findsOneWidget);
+    expect(find.text('192.168.0.25:8082 · Available now'), findsOneWidget);
+    expect(find.text('Recent previews'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Nearby previews')).dy,
+      lessThan(tester.getTopLeft(find.text('Recent previews')).dy),
+    );
+
+    await tester.tap(find.text('Sink'));
+    expect(opened, url);
+  });
+
   testWidgets('network status uses quiet contextual labels', (tester) async {
     const labels = {
-      NetworkState.wifiReady: 'Same Wi-Fi recommended',
+      NetworkState.wifiReady: 'Same Wi-Fi usually works best',
       NetworkState.cellularHotspot: 'Cellular connection',
       NetworkState.offline: 'Offline — connect to a network',
       NetworkState.unknown: 'Checking network…',
