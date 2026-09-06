@@ -22,7 +22,7 @@ class AnimatedGridBackground extends StatelessWidget {
     this.scrollController,
     this.columns = 6,
     this.rows = 12,
-    this.spacing = 6,
+    this.spacing = 10,
     this.staggerDuration = const Duration(milliseconds: 45),
     this.animationDuration = const Duration(milliseconds: 650),
   });
@@ -52,8 +52,7 @@ class AnimatedGridBackground extends StatelessWidget {
         },
         child: GridView.builder(
           physics: const NeverScrollableScrollPhysics(),
-          // Start at the top so the brand lockup can float above the grid.
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          padding: const EdgeInsets.fromLTRB(16, 28, 16, 100),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: columns,
             crossAxisSpacing: spacing,
@@ -150,28 +149,11 @@ class _AnimatedGridCellState extends State<_AnimatedGridCell>
       },
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.cyan.withValues(alpha: 0.025),
-              AppTheme.lightBlue.withValues(alpha: 0.008),
-              Colors.transparent,
-            ],
-            stops: const [0, 0.38, 1],
-          ),
+          color: AppTheme.cyan.withValues(alpha: 0.006),
           border: Border.all(
-            color: AppTheme.cyan.withValues(alpha: 0.075),
-            width: 0.8,
+            color: AppTheme.cyan.withValues(alpha: 0.045),
+            width: 0.7,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.cyan.withValues(alpha: 0.025),
-              blurRadius: 16,
-              spreadRadius: -4,
-              offset: const Offset(0, 3),
-            ),
-          ],
           borderRadius: BorderRadius.circular(8),
         ),
       ),
