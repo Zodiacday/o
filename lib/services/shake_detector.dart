@@ -7,6 +7,10 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// Recognizes a deliberate back-and-forth shake without treating a single
 /// bump or tilt as a menu command.
 class ShakeGestureRecognizer {
+  /// User-accelerometer values are measured in m/s². This is intentionally
+  /// low enough for a comfortable wrist shake, while the required
+  /// back-and-forth direction changes prevent normal movement from opening the
+  /// controls.
   final double threshold;
   final Duration maxDirectionInterval;
   final Duration cooldown;
@@ -17,9 +21,9 @@ class ShakeGestureRecognizer {
   int _directionChanges = 0;
 
   ShakeGestureRecognizer({
-    this.threshold = 13.0,
-    this.maxDirectionInterval = const Duration(milliseconds: 700),
-    this.cooldown = const Duration(milliseconds: 1200),
+    this.threshold = 6.0,
+    this.maxDirectionInterval = const Duration(milliseconds: 900),
+    this.cooldown = const Duration(milliseconds: 1500),
   });
 
   bool addSample(double x, double y, double z, {DateTime? timestamp}) {

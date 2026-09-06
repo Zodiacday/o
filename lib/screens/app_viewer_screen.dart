@@ -29,6 +29,8 @@ class AppViewerScreen extends StatefulWidget {
 
 class _AppViewerScreenState extends State<AppViewerScreen>
     with WidgetsBindingObserver {
+  static const _minimumLoadingDisplay = Duration(milliseconds: 900);
+
   late final WebViewController _controller;
   int _loadingProgress = 0;
   bool _isPageReady = false;
@@ -39,6 +41,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   bool _useSafeArea = false;
   late final ShakeDetector _shakeDetector;
   PreviewDiagnosticsChannel? _diagnosticsChannel;
+  Timer? _loadingCompletionTimer;
+  DateTime? _loadingStartedAt;
 
   @override
   void initState() {
@@ -47,6 +51,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
     _shakeDetector.start();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    _loadingStartedAt = DateTime.now();
 
     if (widget.controlUrl != null) {
       _diagnosticsChannel = PreviewDiagnosticsChannel(
@@ -68,6 +73,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           },
           onPageStarted: (_) {
             if (mounted) {
+              _loadingCompletionTimer?.cancel();
+              _loadingStartedAt = DateTime.now();
               setState(() {
                 _hasError = false;
                 _isPageReady = false;
@@ -76,15 +83,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             }
           },
           onPageFinished: (_) {
-            if (mounted) {
-              setState(() {
-                _loadingProgress = 100;
-                _isPageReady = true;
-                _hasError = false;
-                _diagnostic = null;
-                _errorDismissed = false;
-              });
-            }
+            if (!mounted || _hasError) return;
+            setState(() => _loadingProgress = 100);
+            _completeLoadingWhenVisibleLongEnough();
           },
           onWebResourceError: (error) {
             if (error.isForMainFrame ?? true) {
@@ -121,6 +122,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _loadingCompletionTimer?.cancel();
     _shakeDetector.stop();
     unawaited(_diagnosticsChannel?.dispose());
     SystemChrome.setEnabledSystemUIMode(
@@ -156,71 +158,20 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                   : WebViewWidget(controller: _controller),
             ),
 
-            // Keep startup polished while Flutter initializes its web engine.
+            // Keep startup focused on one calm, live progress surface while
+            // Flutter initializes its web engine.
             if (!_isPageReady && !_hasError)
               Positioned.fill(
                 child: ColoredBox(
                   color: AppTheme.background,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 30,
-                          height: 30,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppTheme.lightBlue,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.title ?? 'Launching preview',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          _loadingProgress == 0
-                              ? 'Connecting to development server…'
-                              : 'Loading $_loadingProgress%',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: _loadingProgress == 0
-                                ? AppTheme.textSecondary
-                                : AppTheme.statusGreen,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        PreviewLoadingProgress(progress: _loadingProgress),
-                      ],
-                    ),
+                  child: PreviewLoadingProgress(
+                    progress: _loadingProgress,
+                    projectName: widget.title,
                   ),
                 ),
               ),
 
-            // 2. Minimalist Loading Progress Indicator
-            if (_loadingProgress < 100 && !_hasError)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  child: LinearProgressIndicator(
-                    value: _loadingProgress / 100.0,
-                    backgroundColor: Colors.transparent,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppTheme.statusGreen,
-                    ),
-                    minHeight: 2,
-                  ),
-                ),
-              ),
-
-            // 3. Keep the live preview visible while diagnostics slide up.
+            // Keep the live preview visible while diagnostics slide up.
             if (_diagnostic != null && !_errorDismissed)
               PreviewErrorSheet(
                 diagnostic: _diagnostic!,
@@ -260,6 +211,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
   void _showDiagnostic(PreviewDiagnostic diagnostic) {
     if (!mounted) return;
+    _loadingCompletionTimer?.cancel();
     setState(() {
       _diagnostic = diagnostic;
       _errorDismissed = false;
@@ -269,6 +221,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
   void _retryPreview() {
     HapticFeedback.mediumImpact();
+    _loadingCompletionTimer?.cancel();
+    _loadingStartedAt = DateTime.now();
     setState(() {
       _diagnostic = null;
       _errorDismissed = false;
@@ -277,6 +231,30 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       _loadingProgress = 0;
     });
     _controller.reload();
+  }
+
+  void _completeLoadingWhenVisibleLongEnough() {
+    final startedAt = _loadingStartedAt ?? DateTime.now();
+    final elapsed = DateTime.now().difference(startedAt);
+    final remaining = _minimumLoadingDisplay - elapsed;
+
+    void complete() {
+      if (!mounted || _hasError) return;
+      setState(() {
+        _isPageReady = true;
+        _hasError = false;
+        _diagnostic = null;
+        _errorDismissed = false;
+      });
+    }
+
+    if (remaining <= Duration.zero) {
+      complete();
+      return;
+    }
+
+    _loadingCompletionTimer?.cancel();
+    _loadingCompletionTimer = Timer(remaining, complete);
   }
 
   void _copyDiagnostic() {
