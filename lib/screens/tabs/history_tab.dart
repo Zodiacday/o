@@ -263,7 +263,7 @@ class _HistoryTabState extends State<HistoryTab> {
           Text(
             searching
                 ? 'Try another project name or endpoint.'
-                : 'Run previewport start to begin.',
+                : 'Run pp start to begin.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppTheme.textSecondary,

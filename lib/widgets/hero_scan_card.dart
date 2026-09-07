@@ -233,7 +233,7 @@ class HeroScanCard extends StatelessWidget {
   Widget _buildCommandLink() {
     return Semantics(
       button: true,
-      label: 'Copy previewport start command',
+      label: 'Copy pp start command',
       hint: 'Copies the command to the clipboard',
       child: GestureDetector(
         key: const Key('copy-cli-command'),
@@ -252,7 +252,7 @@ class HeroScanCard extends StatelessWidget {
                     ),
                   ),
                   TextSpan(
-                    text: 'previewport start',
+                    text: 'pp start',
                     style: GoogleFonts.jetBrainsMono(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -312,7 +312,7 @@ class HeroScanCard extends StatelessWidget {
               const SizedBox(height: 12),
               Semantics(
                 button: true,
-                label: 'Copy previewport start command',
+                label: 'Copy pp start command',
                 hint: 'Copies the command to the clipboard',
                 child: GestureDetector(
                   onTap: () {
@@ -340,7 +340,7 @@ class HeroScanCard extends StatelessWidget {
                         const SizedBox(width: 9),
                         Expanded(
                           child: Text(
-                            'previewport start',
+                            'pp start',
                             style: GoogleFonts.jetBrainsMono(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,

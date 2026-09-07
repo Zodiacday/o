@@ -273,7 +273,7 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
             ),
             const SizedBox(height: 5),
             Text(
-              'Run previewport start to begin.',
+              'Run pp start to begin.',
               style: GoogleFonts.inter(
                 color: AppTheme.textSecondary,
                 fontSize: 12,

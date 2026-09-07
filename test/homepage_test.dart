@@ -69,7 +69,7 @@ void main() {
     await tester.tap(find.byTooltip('Connection information'));
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('How PreviewPort connects'), findsOneWidget);
-    expect(find.text('previewport start'), findsOneWidget);
+    expect(find.text('pp start'), findsOneWidget);
 
     expect(scanCount, 1);
     expect(pasteCount, 1);
@@ -124,7 +124,7 @@ void main() {
 
     expect(find.text('Recent previews'), findsOneWidget);
     expect(find.text('No previews yet'), findsOneWidget);
-    expect(find.text('Run previewport start to begin.'), findsNothing);
+    expect(find.text('Run pp start to begin.'), findsNothing);
     expect(find.text(r'$ previewport'), findsNothing);
   });
 

@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _copyCliCommand() {
-    Clipboard.setData(const ClipboardData(text: 'previewport start'));
+    Clipboard.setData(const ClipboardData(text: 'pp start'));
     HapticFeedback.lightImpact();
     toastification.show(
       context: context,
