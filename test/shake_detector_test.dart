@@ -14,15 +14,6 @@ void main() {
         0,
         timestamp: start.add(const Duration(milliseconds: 120)),
       ),
-      isFalse,
-    );
-    expect(
-      recognizer.addSample(
-        18,
-        0,
-        0,
-        timestamp: start.add(const Duration(milliseconds: 240)),
-      ),
       isTrue,
     );
   });
@@ -39,8 +30,8 @@ void main() {
     );
 
     expect(sample(18, 0), isFalse);
-    expect(sample(-18, 120), isFalse);
-    expect(sample(18, 240), isTrue);
+    expect(sample(-18, 120), isTrue);
+    expect(sample(18, 240), isFalse);
     expect(sample(-18, 360), isFalse);
     expect(sample(18, 480), isFalse);
   });
@@ -64,9 +55,25 @@ void main() {
         18,
         0,
         0,
-        timestamp: start.add(const Duration(milliseconds: 1000)),
+        timestamp: start.add(const Duration(milliseconds: 1500)),
       ),
       isFalse,
+    );
+  });
+
+  test('default threshold responds to effortless wrist flick (2.0 m/s²)', () {
+    final recognizer = ShakeGestureRecognizer();
+    final start = DateTime(2026, 1, 1);
+
+    expect(recognizer.addSample(2.0, 0, 0, timestamp: start), isFalse);
+    expect(
+      recognizer.addSample(
+        -2.0,
+        0,
+        0,
+        timestamp: start.add(const Duration(milliseconds: 150)),
+      ),
+      isTrue,
     );
   });
 }

@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Drawing
 
-$rawPath = "C:\Users\natan\.gemini\antigravity-ide\brain\fc52e779-8b0c-4590-808e-c6380b91d747\.user_uploaded\media_1788646638445.png"
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$rawPath = Join-Path $projectRoot "assets\previewport-logo-master.png"
 $rawBitmap = [System.Drawing.Bitmap]::FromFile($rawPath)
 
 # 1. Find tight bounding box of visible content
@@ -51,6 +51,13 @@ $gMaster.Dispose()
 $assetLogoPath = Join-Path $projectRoot "assets\previewport-logo-transparent.png"
 $masterBmp.Save($assetLogoPath, [System.Drawing.Imaging.ImageFormat]::Png)
 Write-Host "Updated transparent in-app logo: $assetLogoPath"
+
+# Also sync to CLI assets folder if it exists
+$cliLogoPath = Join-Path (Split-Path -Parent $projectRoot) "Previewport-CLI\assets\previewport-logo-transparent.png"
+if (Test-Path (Split-Path -Parent $cliLogoPath)) {
+    Copy-Item $assetLogoPath $cliLogoPath -Force
+    Write-Host "Synced logo to CLI assets: $cliLogoPath"
+}
 
 # 3. Helper to generate icons on pitch black OLED (#000000)
 function Generate-IconAsset {

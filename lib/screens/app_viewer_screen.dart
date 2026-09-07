@@ -7,6 +7,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_theme.dart';
 import '../services/shake_detector.dart';
 import '../services/preview_diagnostics_channel.dart';
+import '../services/native_bridge.dart';
 import '../models/preview_diagnostic.dart';
 import '../widgets/preview_loading_progress.dart';
 import '../widgets/preview_error_sheet.dart';
@@ -32,6 +33,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   static const _minimumLoadingDisplay = Duration(milliseconds: 900);
 
   late final WebViewController _controller;
+  late final NativeBridgeHandler _nativeBridge;
+  String? _dynamicTitle;
   int _loadingProgress = 0;
   bool _isPageReady = false;
   bool _hasError = false;
@@ -48,9 +51,23 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _dynamicTitle = widget.title;
+    _nativeBridge = NativeBridgeHandler(
+      onTitleChanged: (title) {
+        if (mounted && title.isNotEmpty) {
+          setState(() => _dynamicTitle = title);
+        }
+      },
+      onThemeChanged: (isDark) {
+        if (mounted) {
+          _updateSystemOverlayStyle(isDark: isDark);
+        }
+      },
+    );
     _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
     _shakeDetector.start();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _updateSystemOverlayStyle(isDark: true);
     _loadingStartedAt = DateTime.now();
 
     if (widget.controlUrl != null) {
@@ -65,7 +82,19 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppTheme.background)
-      ..setUserAgent('PreviewPort/1.0 (Live Flutter Preview; iOS/Android)')
+      ..addJavaScriptChannel(
+        'PreviewPortNativeBridge',
+        onMessageReceived: (JavaScriptMessage message) {
+          _nativeBridge.handleMessage(message.message);
+        },
+      )
+      // Preserve the platform browser identity for Flutter engine detection.
+      ..setOnConsoleMessage((message) {
+        if (!mounted || message.level != JavaScriptLogLevel.error) return;
+        _showDiagnostic(PreviewDiagnostic.localError(
+          message: message.message,
+        ));
+      })
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
@@ -74,6 +103,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             _diagnosticsChannel?.reportProgress(_loadingProgress);
           },
           onPageStarted: (_) {
+            _injectBridge();
             if (mounted) {
               _loadingCompletionTimer?.cancel();
               _loadingStartedAt = DateTime.now();
@@ -86,6 +116,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             }
           },
           onPageFinished: (_) {
+            _injectBridge();
             if (!mounted || _hasError) return;
             setState(() => _loadingProgress = 100);
             _diagnosticsChannel?.reportProgress(100);
@@ -112,6 +143,12 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       ..loadRequest(Uri.parse(widget.url));
   }
 
+  void _injectBridge() {
+    unawaited(_controller
+        .runJavaScript(NativeBridgeHandler.injectionScript)
+        .catchError((_) {}));
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -121,6 +158,19 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         state == AppLifecycleState.detached) {
       _shakeDetector.stop();
     }
+  }
+
+  void _updateSystemOverlayStyle({required bool isDark}) {
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+    );
   }
 
   @override
@@ -137,6 +187,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
         systemNavigationBarColor: AppTheme.surface,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
@@ -342,14 +393,46 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Preview controls',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _dynamicTitle ?? 'Preview controls',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.cyan,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Native Bridge Active',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.cyan,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   HapticFeedback.selectionClick();
