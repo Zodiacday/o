@@ -22,9 +22,72 @@ class NativeBridgeHandler {
     this.onThemeChanged,
   });
 
-  /// The JavaScript snippet injected into the WebView to bridge Flutter Web
-  /// calls to the native host container.
-  static const String injectionScript = r'''
+  /// Generates the complete Expo-compatible and PreviewPort injection script
+  /// populated with the host phone's real hardware insets and device metrics.
+  static String buildInjectionScript({
+    double topInset = 0,
+    double bottomInset = 0,
+    double leftInset = 0,
+    double rightInset = 0,
+    double width = 0,
+    double height = 0,
+    double pixelRatio = 1.0,
+    String platform = 'ios',
+  }) {
+    final top = topInset.toStringAsFixed(1);
+    final bottom = bottomInset.toStringAsFixed(1);
+    final left = leftInset.toStringAsFixed(1);
+    final right = rightInset.toStringAsFixed(1);
+    final hasDynamicIsland = platform == 'ios' && topInset >= 54;
+    final hasNotch = topInset > 24;
+
+    final insetsPreamble = '''
+(function() {
+  // Expo react-native-safe-area-context standard hardware metrics
+  var insets = {
+    top: $top,
+    bottom: $bottom,
+    left: $left,
+    right: $right
+  };
+  window.__PREVIEWPORT_INSETS__ = insets;
+  window.safeAreaInsets = insets;
+
+  window.PreviewPort = window.PreviewPort || {};
+  window.PreviewPort.safeArea = insets;
+  window.PreviewPort.device = {
+    platform: '$platform',
+    pixelRatio: ${pixelRatio.toStringAsFixed(2)},
+    screenWidth: ${width.toStringAsFixed(1)},
+    screenHeight: ${height.toStringAsFixed(1)},
+    isIOS: ${platform == 'ios'},
+    isAndroid: ${platform == 'android'},
+    hasDynamicIsland: $hasDynamicIsland,
+    hasNotch: $hasNotch
+  };
+
+  try {
+    var styleId = '__previewport_device_insets';
+    var styleEl = document.getElementById(styleId);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      if (document.head) document.head.appendChild(styleEl);
+    }
+    if (styleEl) {
+      styleEl.textContent = ':root { --sat: ${top}px; --sab: ${bottom}px; --sal: ${left}px; --sar: ${right}px; --safe-area-inset-top: ${top}px; --safe-area-inset-bottom: ${bottom}px; --safe-area-inset-left: ${left}px; --safe-area-inset-right: ${right}px; }';
+    }
+  } catch (e) {}
+})();
+''';
+
+    return insetsPreamble + _coreScript;
+  }
+
+  /// Default baseline script for static evaluation or testing.
+  static String get injectionScript => buildInjectionScript();
+
+  static const String _coreScript = r'''
 (function() {
   if (window.__previewPortBridgeInjected) return;
   window.__previewPortBridgeInjected = true;
@@ -36,7 +99,7 @@ class NativeBridgeHandler {
       metaViewport = document.createElement('meta');
       metaViewport.name = 'viewport';
       metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-      document.head.appendChild(metaViewport);
+      if (document.head) document.head.appendChild(metaViewport);
     } else if (!metaViewport.content.includes('viewport-fit=cover')) {
       metaViewport.content += ', viewport-fit=cover';
     }
@@ -48,7 +111,7 @@ class NativeBridgeHandler {
       var style = document.createElement('style');
       style.id = '__previewport_native_styles';
       style.textContent = 'html, body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }';
-      document.head.appendChild(style);
+      if (document.head) document.head.appendChild(style);
     }
   } catch (e) {}
 
@@ -86,32 +149,37 @@ class NativeBridgeHandler {
     return true;
   };
 
-  // 4. Expose explicit window.PreviewPort API for rich developer calls
-  window.PreviewPort = {
-    haptic: function(type) {
-      if (window.PreviewPortNativeBridge) {
-        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
-          type: 'haptic',
-          subtype: type || 'light'
-        }));
-      }
-    },
-    setTitle: function(title) {
-      if (window.PreviewPortNativeBridge) {
-        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
-          type: 'title',
-          value: title
-        }));
-      }
-    },
-    setStatusBarStyle: function(style) {
-      if (window.PreviewPortNativeBridge) {
-        var isDark = style === 'dark' || (typeof style === 'object' && style.dark === true);
-        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
-          type: 'theme',
-          isDark: isDark
-        }));
-      }
+  // 4. Expose explicit window.PreviewPort API and ExpoStatusBar compatibility
+  window.PreviewPort = window.PreviewPort || {};
+  window.PreviewPort.haptic = function(type) {
+    if (window.PreviewPortNativeBridge) {
+      window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+        type: 'haptic',
+        subtype: type || 'light'
+      }));
+    }
+  };
+  window.PreviewPort.setTitle = function(title) {
+    if (window.PreviewPortNativeBridge) {
+      window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+        type: 'title',
+        value: title
+      }));
+    }
+  };
+  window.PreviewPort.setStatusBarStyle = function(style) {
+    if (window.PreviewPortNativeBridge) {
+      var isDark = style === 'dark' || (typeof style === 'object' && style.dark === true);
+      window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+        type: 'theme',
+        isDark: isDark
+      }));
+    }
+  };
+
+  window.ExpoStatusBar = {
+    setStyle: function(style) {
+      window.PreviewPort.setStatusBarStyle(style);
     }
   };
 

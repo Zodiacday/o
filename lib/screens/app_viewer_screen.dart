@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_theme.dart';
@@ -144,9 +145,38 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   }
 
   void _injectBridge() {
+    EdgeInsets insets = EdgeInsets.zero;
+    Size size = Size.zero;
+    double pixelRatio = 1.0;
+    if (mounted) {
+      final mq = MediaQuery.maybeOf(context);
+      if (mq != null) {
+        insets = mq.padding;
+        size = mq.size;
+        pixelRatio = mq.devicePixelRatio;
+      }
+    }
+
+    final script = NativeBridgeHandler.buildInjectionScript(
+      topInset: insets.top,
+      bottomInset: insets.bottom,
+      leftInset: insets.left,
+      rightInset: insets.right,
+      width: size.width,
+      height: size.height,
+      pixelRatio: pixelRatio,
+      platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+    );
+
     unawaited(_controller
-        .runJavaScript(NativeBridgeHandler.injectionScript)
+        .runJavaScript(script)
         .catchError((_) {}));
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    _injectBridge();
   }
 
   @override

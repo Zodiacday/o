@@ -13,6 +13,29 @@ void main() {
       expect(NativeBridgeHandler.injectionScript, contains('viewport-fit=cover'));
       expect(NativeBridgeHandler.injectionScript, contains('overscroll-behavior-y'));
       expect(NativeBridgeHandler.injectionScript, contains('setStatusBarStyle'));
+      expect(NativeBridgeHandler.injectionScript, contains('window.safeAreaInsets'));
+      expect(NativeBridgeHandler.injectionScript, contains('ExpoStatusBar'));
+    });
+
+    test('buildInjectionScript populates hardware metrics and Dynamic Island detection', () {
+      final script = NativeBridgeHandler.buildInjectionScript(
+        topInset: 59.0,
+        bottomInset: 34.0,
+        leftInset: 0.0,
+        rightInset: 0.0,
+        width: 393.0,
+        height: 852.0,
+        pixelRatio: 3.0,
+        platform: 'ios',
+      );
+
+      expect(script, contains('top: 59.0'));
+      expect(script, contains('bottom: 34.0'));
+      expect(script, contains('--safe-area-inset-top: 59.0px'));
+      expect(script, contains('--safe-area-inset-bottom: 34.0px'));
+      expect(script, contains('hasDynamicIsland: true'));
+      expect(script, contains('hasNotch: true'));
+      expect(script, contains("platform: 'ios'"));
     });
 
     test('parses and triggers haptic feedback events', () {
