@@ -56,6 +56,28 @@ class NearbyPreview {
     );
   }
 
+  static NearbyPreview? fromUdpJson(Map<String, dynamic> data) {
+    if (data['app'] != 'previewport' || data['v'] != previewportDiscoveryVersion) {
+      return null;
+    }
+    final name = data['name'] as String?;
+    final host = data['ip'] as String?;
+    final port = data['port'] as int?;
+    final sid = data['sid'] as String?;
+    final ctrl = data['ctrl'] as String?;
+    if (name == null || host == null || port == null || sid == null) return null;
+
+    final authority = host.contains(':') ? '[$host]' : host;
+    return NearbyPreview(
+      id: sid,
+      projectName: name,
+      url: 'http://$authority:$port/',
+      host: host,
+      port: port,
+      controlUrl: ctrl,
+    );
+  }
+
   static String keyForService(BonsoirService service, {String? host}) {
     final resolvedHost =
         host ?? _usableHost(service.hostAddresses) ?? service.hostname ?? '';

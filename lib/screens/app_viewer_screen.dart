@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,6 +16,9 @@ import '../widgets/preview_loading_progress.dart';
 import '../widgets/preview_error_sheet.dart';
 import '../widgets/location_mock_sheet.dart';
 import '../widgets/viewport_switcher_sheet.dart';
+import '../widgets/floating_ghost_capsule.dart';
+import '../widgets/mini_terminal_drawer.dart';
+import '../widgets/bug_annotator_modal.dart';
 
 class AppViewerScreen extends StatefulWidget {
   final String url;
@@ -37,6 +42,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
   late final WebViewController _controller;
   late final NativeBridgeHandler _nativeBridge;
+  final GlobalKey _viewportKey = GlobalKey();
+
   String? _dynamicTitle;
   int _loadingProgress = 0;
   bool _isPageReady = false;
@@ -45,15 +52,17 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   bool _errorDismissed = false;
   bool _isMenuOpen = false;
   bool _useSafeArea = false;
+  bool _showFloatingCapsule = true;
   late final ShakeDetector _shakeDetector;
   PreviewDiagnosticsChannel? _diagnosticsChannel;
   Timer? _loadingCompletionTimer;
   DateTime? _loadingStartedAt;
 
-  // PreviewPort 2.0 Simulation State
+  // PreviewPort 2.0 Simulation & Log State
   String _networkCondition = 'normal'; // 'normal' | '3g' | 'offline'
   MockLocationPreset _selectedLocation = defaultLocationPresets.first;
   SimulatedDeviceProfile _selectedDevice = defaultDeviceProfiles.first;
+  final List<TerminalLogEntry> _terminalLogs = [];
 
   @override
   void initState() {
@@ -71,6 +80,18 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           _updateSystemOverlayStyle(isDark: isDark);
         }
       },
+      onConsoleLog: (message, level) {
+        if (!mounted) return;
+        setState(() {
+          _terminalLogs.add(TerminalLogEntry(
+            id: '${DateTime.now().microsecondsSinceEpoch}',
+            message: message,
+            level: level,
+            source: 'web',
+          ));
+          if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
+        });
+      },
     );
     _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
     _shakeDetector.start();
@@ -83,6 +104,18 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         controlUrl: widget.controlUrl,
         onDiagnostic: _handleRemoteDiagnostic,
         onHealthy: _handleHealthy,
+        onLog: (message, level, source) {
+          if (!mounted) return;
+          setState(() {
+            _terminalLogs.add(TerminalLogEntry(
+              id: '${DateTime.now().microsecondsSinceEpoch}',
+              message: message,
+              level: level,
+              source: source,
+            ));
+            if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
+          });
+        },
       );
       unawaited(_diagnosticsChannel!.connect());
     }
@@ -285,13 +318,35 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         backgroundColor: AppTheme.background,
         body: Stack(
           children: [
-            // 1. Viewport Container (Native Fullscreen or Scaled Device Simulation Frame)
+            // 1. RepaintBoundary wrapped Viewport Container
             Positioned.fill(
-              child: _buildViewportContent(),
+              child: RepaintBoundary(
+                key: _viewportKey,
+                child: _buildViewportContent(),
+              ),
             ),
 
-            // Keep startup focused on one calm, live progress surface while
-            // Flutter initializes its web engine.
+            // 2. Horizon Amber Indicator when Simulated Offline Mode is active
+            if (_networkCondition == 'offline')
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 3,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.warning,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.warning.withValues(alpha: 0.8),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // 3. Calm loading progress surface
             if (!_isPageReady && !_hasError)
               Positioned.fill(
                 child: ColoredBox(
@@ -303,7 +358,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 ),
               ),
 
-            // Keep the live preview visible while diagnostics slide up.
+            // 4. Remote/Local Diagnostics error sheet
             if (_diagnostic != null && !_errorDismissed)
               PreviewErrorSheet(
                 diagnostic: _diagnostic!,
@@ -314,6 +369,17 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 },
               ),
 
+            // 5. Ethereal Ghost Capsule HUD (Floating 1-tap hot reload & gestures)
+            if (_showFloatingCapsule && !_isMenuOpen)
+              FloatingGhostCapsule(
+                onHotReload: _triggerRemoteReload,
+                onOpenMenu: _openMenuFromShake,
+                onOpenTerminal: _openMiniTerminal,
+                onAnnotateBug: _openBugAnnotator,
+                isCliConnected: _diagnosticsChannel?.isConnected ?? false,
+              ),
+
+            // 6. Shake Dev Menu Overlay
             _buildMenuOverlay(),
           ],
         ),
@@ -322,141 +388,143 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   }
 
   Widget _buildViewportContent() {
-    if (_selectedDevice.isNative) {
-      return _useSafeArea
-          ? SafeArea(child: WebViewWidget(controller: _controller))
-          : WebViewWidget(controller: _controller);
-    }
-
-    final targetW = _selectedDevice.width!;
-    final targetH = _selectedDevice.height!;
+    final mq = MediaQuery.of(context);
+    final isNative = _selectedDevice.isNative;
+    final targetW = _selectedDevice.width ?? mq.size.width;
+    final targetH = _selectedDevice.height ?? mq.size.height;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final availW = constraints.maxWidth;
         final availH = constraints.maxHeight;
 
-        // Scale down to comfortably fit inside the physical phone viewport with workbench padding
-        final horizontalPadding = 32.0;
-        final verticalPadding = 80.0;
+        final horizontalPadding = isNative ? 0.0 : 32.0;
+        final verticalPadding = isNative ? 0.0 : 80.0;
         final scaleX = (availW - horizontalPadding) / targetW;
         final scaleY = (availH - verticalPadding) / targetH;
-        final scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.2, 1.0);
+        final scale = isNative ? 1.0 : (scaleX < scaleY ? scaleX : scaleY).clamp(0.2, 1.0);
 
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // Dark device workbench backdrop
-            Positioned.fill(
-              child: Container(
-                color: const Color(0xFF070707),
-              ),
-            ),
-
-            // Top device indicator badge
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _openViewportSwitcher();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_selectedDevice.icon, size: 13, color: AppTheme.cyan),
-                      const SizedBox(width: 6),
-                      Text(
-                        _selectedDevice.name,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
-                        ),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeInOutCubic,
+          color: isNative ? AppTheme.background : const Color(0xFF070707),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Top device indicator badge (only shown in simulated device mode)
+              if (!isNative)
+                Positioned(
+                  top: mq.padding.top + 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _openViewportSwitcher();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.tune_rounded, size: 12, color: AppTheme.textSecondary),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_selectedDevice.icon, size: 13, color: AppTheme.cyan),
+                          const SizedBox(width: 6),
+                          Text(
+                            _selectedDevice.name,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.tune_rounded, size: 12, color: AppTheme.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Scaled device chassis frame with fluid morphing
+              AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeInOutCubic,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeInOutCubic,
+                  width: targetW,
+                  height: targetH,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(isNative ? 0 : _selectedDevice.cornerRadius),
+                    border: Border.all(
+                      color: isNative ? Colors.transparent : const Color(0xFF333333),
+                      width: isNative ? 0 : 3.5,
+                    ),
+                    boxShadow: isNative
+                        ? null
+                        : const [
+                            BoxShadow(
+                              color: Colors.black87,
+                              blurRadius: 36,
+                              spreadRadius: 8,
+                            ),
+                          ],
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: _useSafeArea && isNative
+                            ? SafeArea(child: WebViewWidget(controller: _controller))
+                            : WebViewWidget(controller: _controller),
+                      ),
+
+                      // Punch-hole camera cutout if simulated android device
+                      if (!isNative && _selectedDevice.hasNotch)
+                        Positioned(
+                          top: 10,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF080808),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Bottom gesture indicator bar if simulated
+                      if (!isNative && _selectedDevice.bottomInset > 0)
+                        Positioned(
+                          bottom: 6,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              width: 120,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.28),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-            ),
-
-            // Scaled device chassis frame
-            Transform.scale(
-              scale: scale,
-              child: Container(
-                width: targetW,
-                height: targetH,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(_selectedDevice.cornerRadius),
-                  border: Border.all(
-                    color: const Color(0xFF333333),
-                    width: 3.5,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black87,
-                      blurRadius: 36,
-                      spreadRadius: 8,
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: WebViewWidget(controller: _controller),
-                    ),
-
-                    // Punch-hole camera cutout if simulated android device
-                    if (_selectedDevice.hasNotch)
-                      Positioned(
-                        top: 10,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF080808),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Bottom gesture indicator bar if simulated
-                    if (_selectedDevice.bottomInset > 0)
-                      Positioned(
-                        bottom: 6,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Container(
-                            width: 120,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.28),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -475,6 +543,10 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
   void _handleHealthy() {
     if (!mounted) return;
+    HapticFeedback.lightImpact();
+    Future.delayed(const Duration(milliseconds: 75), () {
+      HapticFeedback.mediumImpact();
+    });
     setState(() {
       _diagnostic = null;
       _errorDismissed = false;
@@ -509,7 +581,11 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   }
 
   void _triggerRemoteReload() {
-    HapticFeedback.mediumImpact();
+    HapticFeedback.lightImpact();
+    Future.delayed(const Duration(milliseconds: 75), () {
+      HapticFeedback.mediumImpact();
+    });
+
     if (_diagnosticsChannel == null || !_diagnosticsChannel!.isConnected) {
       _showToast(
         icon: Icons.wifi_off_rounded,
@@ -521,7 +597,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     _diagnosticsChannel!.triggerHotReload();
     _showToast(
       icon: Icons.bolt_rounded,
-      label: '⚡ Hot Reload triggered',
+      label: '⚡ Hot Reload signal sent',
       color: AppTheme.cyan,
     );
   }
@@ -541,6 +617,72 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       icon: Icons.restart_alt_rounded,
       label: '⚡ Hot Restart triggered',
       color: AppTheme.primary,
+    );
+  }
+
+  Future<void> _openBugAnnotator() async {
+    _closeMenu();
+    HapticFeedback.mediumImpact();
+
+    try {
+      final boundary = _viewportKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) return;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+      final bytes = byteData.buffer.asUint8List();
+
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (ctx) => BugAnnotatorModal(
+            screenshotBytes: bytes,
+            onSend: (base64Image, notes) {
+              if (_diagnosticsChannel == null || !_diagnosticsChannel!.isConnected) {
+                _showToast(
+                  icon: Icons.wifi_off_rounded,
+                  label: 'Workstation offline; cannot beam screenshot',
+                  color: AppTheme.warning,
+                );
+                return;
+              }
+              _diagnosticsChannel!.sendBugReport(
+                base64Image: base64Image,
+                notes: notes,
+                device: _selectedDevice.name,
+              );
+              _showToast(
+                icon: Icons.check_circle_rounded,
+                label: '📸 Bug report beamed to PC & Clipboard!',
+                color: AppTheme.cyan,
+              );
+            },
+          ),
+        ),
+      );
+    } catch (_) {
+      _showToast(
+        icon: Icons.error_outline_rounded,
+        label: 'Could not capture screenshot',
+        color: AppTheme.danger,
+      );
+    }
+  }
+
+  void _openMiniTerminal() {
+    _closeMenu();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => MiniTerminalDrawer(
+        logs: _terminalLogs,
+        onClear: () {
+          setState(() => _terminalLogs.clear());
+        },
+        onClose: () => Navigator.of(ctx).pop(),
+      ),
     );
   }
 
@@ -734,7 +876,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     final isCliConnected = _diagnosticsChannel?.isConnected ?? false;
 
     return Container(
-      width: 290,
+      width: 294,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: const Color(0xF40C0C0C),
@@ -913,10 +1055,30 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             currentValue: _selectedDevice.name,
             onTap: _openViewportSwitcher,
           ),
+          _buildMenuNavRow(
+            icon: Icons.terminal_rounded,
+            label: 'Console Logs',
+            currentValue: '${_terminalLogs.length} events',
+            onTap: _openMiniTerminal,
+          ),
+          _buildMenuNavRow(
+            icon: Icons.camera_alt_rounded,
+            label: 'Annotate Bug',
+            currentValue: 'Send to PC',
+            onTap: _openBugAnnotator,
+          ),
 
           const Divider(height: 14, color: AppTheme.borderSubtle),
 
-          // Maintenance & Tools
+          // Maintenance & Toggles
+          _buildMenuRow(
+            icon: _showFloatingCapsule ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+            label: _showFloatingCapsule ? 'Hide floating HUD' : 'Show floating HUD',
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _showFloatingCapsule = !_showFloatingCapsule);
+            },
+          ),
           _buildMenuRow(
             icon: Icons.refresh_rounded,
             label: 'Reload webview',
@@ -984,7 +1146,11 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          HapticFeedback.selectionClick();
+          if (condition == 'offline') {
+            HapticFeedback.heavyImpact();
+          } else {
+            HapticFeedback.selectionClick();
+          }
           setState(() => _networkCondition = condition);
           _controller.runJavaScript(
             NativeBridgeHandler.buildSetNetworkConditionScript(condition),

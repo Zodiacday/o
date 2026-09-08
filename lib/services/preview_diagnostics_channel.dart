@@ -15,6 +15,7 @@ class PreviewDiagnosticsChannel {
   final String? controlUrl;
   final PreviewDiagnosticHandler onDiagnostic;
   final PreviewHealthyHandler onHealthy;
+  final void Function(String message, String level, String source)? onLog;
 
   WebSocketChannel? _channel;
   StreamSubscription<Object?>? _subscription;
@@ -33,6 +34,16 @@ class PreviewDiagnosticsChannel {
   void triggerHotRestart() {
     if (_disposed || !_connected) return;
     _channel?.sink.add(jsonEncode({'type': 'action', 'action': 'restart'}));
+  }
+
+  void sendBugReport({required String base64Image, String? notes, String? device}) {
+    if (_disposed || !_connected) return;
+    _channel?.sink.add(jsonEncode({
+      'type': 'bug_report',
+      'image': base64Image,
+      'notes': notes,
+      'device': device ?? 'iPhone',
+    }));
   }
 
   void reportProgress(int percent, {String state = 'loading'}) {
@@ -57,6 +68,7 @@ class PreviewDiagnosticsChannel {
     required this.controlUrl,
     required this.onDiagnostic,
     required this.onHealthy,
+    this.onLog,
   });
 
   Future<void> connect() async {
@@ -115,6 +127,16 @@ class PreviewDiagnosticsChannel {
         decoded['type'] == 'healthy' &&
         decoded['stage'] is String) {
       onHealthy();
+      return;
+    }
+
+    if (decoded is Map && decoded['type'] == 'log') {
+      final message = decoded['message'] as String?;
+      final level = decoded['level'] as String? ?? 'info';
+      if (message != null && message.trim().isNotEmpty) {
+        onLog?.call(message.trim(), level, 'flutter');
+      }
+      return;
     }
   }
 

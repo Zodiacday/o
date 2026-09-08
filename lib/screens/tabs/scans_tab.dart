@@ -12,6 +12,7 @@ import '../../models/nearby_preview.dart';
 import '../../services/network_status_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/hero_scan_card.dart';
+import '../../widgets/ambient_resume_card.dart';
 import '../../widgets/share_qr_modal.dart';
 
 class ScansTab extends StatelessWidget {
@@ -60,17 +61,27 @@ class ScansTab extends StatelessWidget {
       children: [
         const SizedBox(height: 2),
 
-        HeroScanCard(
-              onTap: onOpenScanner,
-              onPasteUrl: onPasteUrl,
-              onEnterUrl: onEnterUrl,
-              onCopyCommand: onCopyCommand,
-              isBusy: isScannerBusy,
-              networkService: networkService,
-            )
-            .animate()
-            .fadeIn(duration: 400.ms)
-            .scale(begin: const Offset(0.96, 0.96), curve: Curves.easeOutCubic),
+        if (nearbyPreviews.isNotEmpty)
+          AmbientResumeCard(
+            preview: nearbyPreviews.first,
+            onResume: () => onOpenNearbyPreview?.call(nearbyPreviews.first),
+            onScanQr: onOpenScanner,
+          )
+              .animate()
+              .fadeIn(duration: 350.ms)
+              .scale(begin: const Offset(0.96, 0.96), curve: Curves.easeOutCubic)
+        else
+          HeroScanCard(
+            onTap: onOpenScanner,
+            onPasteUrl: onPasteUrl,
+            onEnterUrl: onEnterUrl,
+            onCopyCommand: onCopyCommand,
+            isBusy: isScannerBusy,
+            networkService: networkService,
+          )
+              .animate()
+              .fadeIn(duration: 400.ms)
+              .scale(begin: const Offset(0.96, 0.96), curve: Curves.easeOutCubic),
 
         const SizedBox(height: 38),
 
@@ -79,13 +90,13 @@ class ScansTab extends StatelessWidget {
           const SizedBox(height: 24),
         ],
 
-        if (nearbyPreviews.isNotEmpty) ...[
+        if (nearbyPreviews.length > 1) ...[
           Row(
             children: [
               const Icon(LucideIcons.radio, size: 15, color: AppTheme.cyan),
               const SizedBox(width: 7),
               Text(
-                'Nearby previews',
+                'Other nearby previews',
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -96,9 +107,7 @@ class ScansTab extends StatelessWidget {
             ],
           ).animate().fadeIn(delay: 80.ms, duration: 300.ms),
           const SizedBox(height: 12),
-          ...nearbyPreviews.asMap().entries.map((entry) {
-            final index = entry.key;
-            final preview = entry.value;
+          ...nearbyPreviews.skip(1).map((preview) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _buildShowcaseRow(
@@ -109,9 +118,6 @@ class ScansTab extends StatelessWidget {
                 onTap: () => onOpenNearbyPreview?.call(preview),
                 semanticLabel: 'Open nearby ${preview.projectName} preview',
               ),
-            ).animate().fadeIn(
-              delay: Duration(milliseconds: 100 + index * 40),
-              duration: 280.ms,
             );
           }),
           const SizedBox(height: 26),

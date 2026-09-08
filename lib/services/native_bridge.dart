@@ -15,11 +15,13 @@ class NativeBridgeHandler {
   final void Function(String title)? onTitleChanged;
   final void Function(NativeHapticType hapticType)? onHapticTriggered;
   final void Function(bool isDarkContent)? onThemeChanged;
+  final void Function(String message, String level)? onConsoleLog;
 
   const NativeBridgeHandler({
     this.onTitleChanged,
     this.onHapticTriggered,
     this.onThemeChanged,
+    this.onConsoleLog,
   });
 
   /// Generates the complete Expo-compatible and PreviewPort injection script
@@ -351,8 +353,27 @@ class NativeBridgeHandler {
           }));
         }
       });
-      observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
-    }
+  // 7. Pipe console logs to native bridge for Mini-Terminal
+  try {
+    ['log', 'warn', 'error'].forEach(function(lvl) {
+      var orig = console[lvl];
+      console[lvl] = function() {
+        try {
+          var args = Array.prototype.slice.call(arguments);
+          var msg = args.map(function(a) {
+            return typeof a === 'object' ? JSON.stringify(a) : String(a);
+          }).join(' ');
+          if (window.PreviewPortNativeBridge) {
+            window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+              type: 'console',
+              level: lvl === 'log' ? 'info' : lvl,
+              message: msg
+            }));
+          }
+        } catch (e) {}
+        if (orig) orig.apply(console, arguments);
+      };
+    });
   } catch (e) {}
 })();
 ''';
@@ -379,6 +400,12 @@ class NativeBridgeHandler {
         final isDark = data['isDark'];
         if (isDark is bool) {
           onThemeChanged?.call(isDark);
+        }
+      } else if (type == 'console') {
+        final message = data['message'] as String?;
+        final level = data['level'] as String? ?? 'info';
+        if (message != null && message.trim().isNotEmpty) {
+          onConsoleLog?.call(message.trim(), level);
         }
       }
     } catch (_) {

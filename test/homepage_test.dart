@@ -197,15 +197,15 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Nearby previews'), findsOneWidget);
-    expect(find.text('192.168.0.25:8082 · Available now'), findsOneWidget);
+    expect(find.text('LIVE WORKSTATION SENSED'), findsOneWidget);
+    expect(find.text('192.168.0.25:8082 · Ready on Wi-Fi'), findsOneWidget);
     expect(find.text('Recent previews'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('Nearby previews')).dy,
+      tester.getTopLeft(find.text('LIVE WORKSTATION SENSED')).dy,
       lessThan(tester.getTopLeft(find.text('Recent previews')).dy),
     );
 
-    await tester.tap(find.text('Sink'));
+    await tester.tap(find.text('Tap to Resume Preview'));
     expect(opened, url);
   });
 
