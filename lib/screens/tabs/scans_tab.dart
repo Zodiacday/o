@@ -32,6 +32,7 @@ class ScansTab extends StatelessWidget {
   final VoidCallback? onDismissCapturedPhoto;
   final List<NearbyPreview> nearbyPreviews;
   final void Function(NearbyPreview preview)? onOpenNearbyPreview;
+  final Future<void> Function()? onRefresh;
 
   const ScansTab({
     super.key,
@@ -51,12 +52,14 @@ class ScansTab extends StatelessWidget {
     this.onDismissCapturedPhoto,
     this.nearbyPreviews = const [],
     this.onOpenNearbyPreview,
+    this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    final list = ListView(
       controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(left: 22, right: 22, top: 26, bottom: 120),
       children: [
         const SizedBox(height: 2),
@@ -238,6 +241,15 @@ class ScansTab extends StatelessWidget {
         const SizedBox(height: 40),
       ],
     );
+
+    return onRefresh != null
+        ? RefreshIndicator(
+            onRefresh: onRefresh!,
+            color: AppTheme.cyan,
+            backgroundColor: const Color(0xFF141414),
+            child: list,
+          )
+        : list;
   }
 
   Widget _buildCapturedPhotoCard(BuildContext context) {

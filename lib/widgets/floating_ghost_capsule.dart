@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
 class FloatingGhostCapsule extends StatefulWidget {
@@ -26,6 +27,9 @@ class FloatingGhostCapsule extends StatefulWidget {
 }
 
 class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
+  static const _dyPrefKey = 'previewport_capsule_dy';
+  static const _sidePrefKey = 'previewport_capsule_is_right';
+
   double _dy = 0.75; // Normalized vertical position (0.0 to 1.0)
   bool _isRightSide = true;
   bool _isInteracting = false;
@@ -37,6 +41,29 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
   void initState() {
     super.initState();
     _resetDimTimer();
+    _loadSavedPosition();
+  }
+
+  Future<void> _loadSavedPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedDy = prefs.getDouble(_dyPrefKey);
+      final savedSide = prefs.getBool(_sidePrefKey);
+      if (mounted) {
+        setState(() {
+          if (savedDy != null) _dy = savedDy.clamp(0.0, 1.0);
+          if (savedSide != null) _isRightSide = savedSide;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _savePosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_dyPrefKey, _dy);
+      await prefs.setBool(_sidePrefKey, _isRightSide);
+    } catch (_) {}
   }
 
   @override
@@ -104,6 +131,7 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
         onPanEnd: (_) {
           setState(() => _isInteracting = false);
           _resetDimTimer();
+          _savePosition();
         },
         onTap: _triggerReload,
         onLongPress: () {

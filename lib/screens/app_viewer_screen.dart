@@ -63,6 +63,17 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   MockLocationPreset _selectedLocation = defaultLocationPresets.first;
   SimulatedDeviceProfile _selectedDevice = defaultDeviceProfiles.first;
   final List<TerminalLogEntry> _terminalLogs = [];
+  bool _showReloadFlash = false;
+  Timer? _reloadFlashTimer;
+
+  void _triggerReloadFlash() {
+    if (!mounted) return;
+    _reloadFlashTimer?.cancel();
+    setState(() => _showReloadFlash = true);
+    _reloadFlashTimer = Timer(const Duration(milliseconds: 320), () {
+      if (mounted) setState(() => _showReloadFlash = false);
+    });
+  }
 
   @override
   void initState() {
@@ -292,6 +303,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _loadingCompletionTimer?.cancel();
+    _reloadFlashTimer?.cancel();
     _shakeDetector.stop();
     unawaited(_diagnosticsChannel?.dispose());
     SystemChrome.setEnabledSystemUIMode(
@@ -382,7 +394,31 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 isCliConnected: _diagnosticsChannel?.isConnected ?? false,
               ),
 
-            // 6. Shake Dev Menu Overlay
+            // 6. Reload confirmation glow vignette
+            IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _showReloadFlash ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 140),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: AppTheme.cyan.withValues(alpha: 0.8),
+                      width: 2.5,
+                    ),
+                    gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 1.2,
+                      colors: [
+                        Colors.transparent,
+                        AppTheme.cyan.withValues(alpha: 0.12),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 7. Shake Dev Menu Overlay
             _buildMenuOverlay(),
           ],
         ),
@@ -550,6 +586,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     Future.delayed(const Duration(milliseconds: 75), () {
       HapticFeedback.mediumImpact();
     });
+    _triggerReloadFlash();
     setState(() {
       _diagnostic = null;
       _errorDismissed = false;
@@ -588,6 +625,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     Future.delayed(const Duration(milliseconds: 75), () {
       HapticFeedback.mediumImpact();
     });
+    _triggerReloadFlash();
 
     if (_diagnosticsChannel == null || !_diagnosticsChannel!.isConnected) {
       _showToast(

@@ -82,7 +82,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appIsActive = state == AppLifecycleState.resumed;
-    unawaited(_syncNearbyDiscovery());
+    if (_appIsActive) {
+      _loadHistory();
+      unawaited(_restartNearbyDiscovery());
+    } else {
+      unawaited(_syncNearbyDiscovery());
+    }
+  }
+
+  Future<void> _restartNearbyDiscovery() async {
+    await _nearbyDiscovery.stop();
+    await _syncNearbyDiscovery();
   }
 
   Future<void> _loadHistory() async {
@@ -347,6 +357,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               onDismissCapturedPhoto: _clearCapturedPhoto,
                               nearbyPreviews: _nearbyPreviews,
                               onOpenNearbyPreview: _openNearbyPreview,
+                              onRefresh: () async {
+                                await _loadHistory();
+                                await _restartNearbyDiscovery();
+                              },
                             ),
                             HistoryTab(
                               history: _history,

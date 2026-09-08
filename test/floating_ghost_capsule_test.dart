@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:previewport/widgets/floating_ghost_capsule.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('FloatingGhostCapsule triggers onHotReload on tap and onOpenMenu on long press', (tester) async {
+    SharedPreferences.setMockInitialValues({});
     var reloadCount = 0;
     var menuOpened = false;
 
