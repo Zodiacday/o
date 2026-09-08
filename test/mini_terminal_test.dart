@@ -39,6 +39,17 @@ void main() {
     expect(find.text('Uncaught TypeError on line 42'), findsOneWidget);
     expect(find.text('App started cleanly'), findsNothing);
 
+    // Test real-time search filter
+    await tester.tap(find.text('All (3)'));
+    await tester.pumpAndSettle();
+    expect(find.text('App started cleanly'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'memory');
+    await tester.pumpAndSettle();
+    expect(find.text('Warning: high memory usage'), findsOneWidget);
+    expect(find.text('App started cleanly'), findsNothing);
+    expect(find.text('Uncaught TypeError on line 42'), findsNothing);
+
     // Tap clear
     await tester.tap(find.byIcon(Icons.delete_outline_rounded));
     expect(cleared, isTrue);

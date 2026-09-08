@@ -11,6 +11,55 @@ enum AnnotationTool {
   arrow,
   rectangle,
   pen,
+  eraser,
+}
+
+double _distanceToSegment(Offset p, Offset a, Offset b) {
+  final ab = b - a;
+  final ap = p - a;
+  final abLengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
+  if (abLengthSquared == 0) return (p - a).distance;
+  final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / abLengthSquared).clamp(0.0, 1.0);
+  final projection = Offset(a.dx + t * ab.dx, a.dy + t * ab.dy);
+  return (p - projection).distance;
+}
+
+bool _isPointNearPath(Offset point, AnnotationPath path, double threshold) {
+  if (path.points.isEmpty) return false;
+
+  if (path.tool == AnnotationTool.pen) {
+    if (path.points.length == 1) {
+      return (point - path.points.first).distance <= threshold;
+    }
+    for (var i = 0; i < path.points.length - 1; i++) {
+      if (_distanceToSegment(point, path.points[i], path.points[i + 1]) <= threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  if (path.tool == AnnotationTool.arrow) {
+    if (path.points.length < 2) return false;
+    return _distanceToSegment(point, path.points.first, path.points.last) <= threshold;
+  }
+
+  if (path.tool == AnnotationTool.rectangle) {
+    if (path.points.length < 2) return false;
+    final a = path.points.first;
+    final b = path.points.last;
+    final topLeft = Offset(math.min(a.dx, b.dx), math.min(a.dy, b.dy));
+    final topRight = Offset(math.max(a.dx, b.dx), math.min(a.dy, b.dy));
+    final bottomLeft = Offset(math.min(a.dx, b.dx), math.max(a.dy, b.dy));
+    final bottomRight = Offset(math.max(a.dx, b.dx), math.max(a.dy, b.dy));
+
+    return _distanceToSegment(point, topLeft, topRight) <= threshold ||
+        _distanceToSegment(point, topRight, bottomRight) <= threshold ||
+        _distanceToSegment(point, bottomRight, bottomLeft) <= threshold ||
+        _distanceToSegment(point, bottomLeft, topLeft) <= threshold;
+  }
+
+  return false;
 }
 
 class AnnotationPath {
@@ -101,6 +150,16 @@ class _BugAnnotatorModalState extends State<BugAnnotatorModal> {
     }
   }
 
+  void _eraseAt(Offset pos) {
+    const threshold = 24.0;
+    final initialLength = _paths.length;
+    _paths.removeWhere((p) => _isPointNearPath(pos, p, threshold));
+    if (_paths.length != initialLength) {
+      HapticFeedback.selectionClick();
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -175,17 +234,35 @@ class _BugAnnotatorModalState extends State<BugAnnotatorModal> {
                           Positioned.fill(
                             child: GestureDetector(
                               onPanStart: (details) {
-                                setState(() {
-                                  _currentPoints = [details.localPosition];
-                                });
+                                if (_currentTool == AnnotationTool.eraser) {
+                                  _eraseAt(details.localPosition);
+                                  setState(() {
+                                    _currentPoints = [details.localPosition];
+                                  });
+                                } else {
+                                  setState(() {
+                                    _currentPoints = [details.localPosition];
+                                  });
+                                }
                               },
                               onPanUpdate: (details) {
-                                setState(() {
-                                  _currentPoints.add(details.localPosition);
-                                });
+                                if (_currentTool == AnnotationTool.eraser) {
+                                  _eraseAt(details.localPosition);
+                                  setState(() {
+                                    _currentPoints = [details.localPosition];
+                                  });
+                                } else {
+                                  setState(() {
+                                    _currentPoints.add(details.localPosition);
+                                  });
+                                }
                               },
                               onPanEnd: (_) {
-                                if (_currentPoints.isNotEmpty) {
+                                if (_currentTool == AnnotationTool.eraser) {
+                                  setState(() {
+                                    _currentPoints = [];
+                                  });
+                                } else if (_currentPoints.isNotEmpty) {
                                   setState(() {
                                     _paths.add(AnnotationPath(
                                       tool: _currentTool,
@@ -248,22 +325,37 @@ class _BugAnnotatorModalState extends State<BugAnnotatorModal> {
               child: Row(
                 children: [
                   // Tool Selectors
-                  _buildToolButton(AnnotationTool.arrow, Icons.arrow_outward_rounded, 'Arrow'),
-                  const SizedBox(width: 8),
-                  _buildToolButton(AnnotationTool.rectangle, Icons.crop_square_rounded, 'Box'),
-                  const SizedBox(width: 8),
-                  _buildToolButton(AnnotationTool.pen, Icons.draw_rounded, 'Pen'),
-
-                  const Spacer(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildToolButton(AnnotationTool.arrow, Icons.arrow_outward_rounded, 'Arrow'),
+                          const SizedBox(width: 6),
+                          _buildToolButton(AnnotationTool.rectangle, Icons.crop_square_rounded, 'Box'),
+                          const SizedBox(width: 6),
+                          _buildToolButton(AnnotationTool.pen, Icons.draw_rounded, 'Pen'),
+                          const SizedBox(width: 6),
+                          _buildToolButton(AnnotationTool.eraser, Icons.auto_fix_normal_rounded, 'Eraser'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
 
                   // Color Swatches
                   Row(
                     children: _palette.map((c) {
-                      final isSelected = _currentColor == c;
+                      final isSelected = _currentColor == c && _currentTool != AnnotationTool.eraser;
                       return GestureDetector(
                         onTap: () {
                           HapticFeedback.selectionClick();
-                          setState(() => _currentColor = c);
+                          setState(() {
+                            _currentColor = c;
+                            if (_currentTool == AnnotationTool.eraser) {
+                              _currentTool = AnnotationTool.pen;
+                            }
+                          });
                         },
                         child: Container(
                           margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -348,7 +440,20 @@ class _AnnotationPainter extends CustomPainter {
       _drawPath(canvas, p.tool, p.points, p.color, p.strokeWidth);
     }
     if (currentPoints.isNotEmpty) {
-      _drawPath(canvas, currentTool, currentPoints, currentColor, 3.5);
+      if (currentTool == AnnotationTool.eraser) {
+        final pos = currentPoints.last;
+        final reticleStroke = Paint()
+          ..color = Colors.white.withValues(alpha: 0.8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
+        canvas.drawCircle(pos, 22.0, reticleStroke);
+        final reticleFill = Paint()
+          ..color = AppTheme.cyan.withValues(alpha: 0.2)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(pos, 22.0, reticleFill);
+      } else {
+        _drawPath(canvas, currentTool, currentPoints, currentColor, 3.5);
+      }
     }
   }
 

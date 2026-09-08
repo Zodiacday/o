@@ -80,6 +80,24 @@ class NativeBridgeHandler {
       styleEl.textContent = ':root { --sat: ${top}px; --sab: ${bottom}px; --sal: ${left}px; --sar: ${right}px; --safe-area-inset-top: ${top}px; --safe-area-inset-bottom: ${bottom}px; --safe-area-inset-left: ${left}px; --safe-area-inset-right: ${right}px; }';
     }
   } catch (e) {}
+
+  function applyInsets(ins) {
+    if (!ins) return;
+    window.__PREVIEWPORT_INSETS__ = ins;
+    window.safeAreaInsets = ins;
+    window.PreviewPort = window.PreviewPort || {};
+    window.PreviewPort.safeArea = ins;
+    try {
+      var styleEl = document.getElementById('__previewport_device_insets');
+      if (styleEl) {
+        styleEl.textContent = ':root { --sat: ' + ins.top + 'px; --sab: ' + ins.bottom + 'px; --sal: ' + ins.left + 'px; --sar: ' + ins.right + 'px; --safe-area-inset-top: ' + ins.top + 'px; --safe-area-inset-bottom: ' + ins.bottom + 'px; --safe-area-inset-left: ' + ins.left + 'px; --safe-area-inset-right: ' + ins.right + 'px; }';
+      }
+      window.dispatchEvent(new CustomEvent('previewport:insets-change', { detail: ins }));
+      window.dispatchEvent(new Event('resize'));
+    } catch (e) {}
+  }
+
+  window.PreviewPort.updateInsets = applyInsets;
 })();
 ''';
 
@@ -88,6 +106,20 @@ class NativeBridgeHandler {
 
   /// Default baseline script for static evaluation or testing.
   static String get injectionScript => buildInjectionScript();
+
+  /// Generates script to update safe area insets dynamically without a full reload.
+  static String buildUpdateInsetsScript({
+    required double top,
+    required double bottom,
+    required double left,
+    required double right,
+  }) {
+    final t = top.toStringAsFixed(1);
+    final b = bottom.toStringAsFixed(1);
+    final l = left.toStringAsFixed(1);
+    final r = right.toStringAsFixed(1);
+    return 'try { if (window.PreviewPort && window.PreviewPort.updateInsets) { window.PreviewPort.updateInsets({ top: $t, bottom: $b, left: $l, right: $r }); } } catch (e) {}';
+  }
 
   /// Generates script to update network condition ('normal', '3g', 'offline').
   static String buildSetNetworkConditionScript(String condition) {
@@ -353,6 +385,10 @@ class NativeBridgeHandler {
           }));
         }
       });
+      observer.observe(titleEl, { childList: true, characterData: true, subtree: true });
+    }
+  } catch (e) {}
+
   // 7. Pipe console logs to native bridge for Mini-Terminal
   try {
     ['log', 'warn', 'error'].forEach(function(lvl) {

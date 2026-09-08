@@ -130,6 +130,15 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         onConnectionChanged: (connected) {
           if (mounted) setState(() {});
         },
+        onBugReportAck: () {
+          if (!mounted) return;
+          HapticFeedback.mediumImpact();
+          _showToast(
+            icon: Icons.assignment_turned_in_rounded,
+            label: '📋 Screenshot saved to PC & copied to clipboard!',
+            color: AppTheme.cyan,
+          );
+        },
       );
       unawaited(_diagnosticsChannel!.connect());
     }
@@ -212,6 +221,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       }
     }
 
+    final bool isLandscape = size.width > size.height;
     final double topInset;
     final double bottomInset;
     final double leftInset;
@@ -229,10 +239,17 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       height = size.height;
       platform = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
     } else {
-      topInset = _selectedDevice.topInset;
-      bottomInset = _selectedDevice.bottomInset;
-      leftInset = 0;
-      rightInset = 0;
+      if (isLandscape) {
+        topInset = 0;
+        bottomInset = _selectedDevice.bottomInset > 0 ? 21.0 : 0;
+        leftInset = _selectedDevice.topInset;
+        rightInset = 0;
+      } else {
+        topInset = _selectedDevice.topInset;
+        bottomInset = _selectedDevice.bottomInset;
+        leftInset = 0;
+        rightInset = 0;
+      }
       width = _selectedDevice.width ?? size.width;
       height = _selectedDevice.height ?? size.height;
       platform = _selectedDevice.id == 'android_punch_hole' ? 'android' : 'ios';
@@ -269,10 +286,49 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         .catchError((_) {}));
   }
 
+  void _updateInsetsDynamically() {
+    if (!mounted) return;
+    final mq = MediaQuery.maybeOf(context);
+    if (mq == null) return;
+    final isLandscape = mq.size.width > mq.size.height;
+    final double top;
+    final double bottom;
+    final double left;
+    final double right;
+
+    if (_selectedDevice.isNative) {
+      top = mq.padding.top;
+      bottom = mq.padding.bottom;
+      left = mq.padding.left;
+      right = mq.padding.right;
+    } else {
+      if (isLandscape) {
+        top = 0;
+        bottom = _selectedDevice.bottomInset > 0 ? 21.0 : 0;
+        left = _selectedDevice.topInset;
+        right = 0;
+      } else {
+        top = _selectedDevice.topInset;
+        bottom = _selectedDevice.bottomInset;
+        left = 0;
+        right = 0;
+      }
+    }
+
+    final updateScript = NativeBridgeHandler.buildUpdateInsetsScript(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+    );
+    unawaited(_controller.runJavaScript(updateScript).catchError((_) {}));
+  }
+
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
     _injectBridge();
+    _updateInsetsDynamically();
   }
 
   @override
@@ -694,9 +750,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 device: _selectedDevice.name,
               );
               _showToast(
-                icon: Icons.check_circle_rounded,
-                label: '📸 Bug report beamed to PC & Clipboard!',
-                color: AppTheme.cyan,
+                icon: Icons.cloud_upload_rounded,
+                label: 'Beaming screenshot to PC...',
+                color: Colors.white70,
               );
             },
           ),

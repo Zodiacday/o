@@ -41,18 +41,34 @@ class MiniTerminalDrawer extends StatefulWidget {
 class _MiniTerminalDrawerState extends State<MiniTerminalDrawer> {
   String _selectedFilter = 'all'; // 'all' | 'error' | 'flutter' | 'web'
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   List<TerminalLogEntry> get _filteredLogs {
+    List<TerminalLogEntry> logs;
     if (_selectedFilter == 'error') {
-      return widget.logs.where((l) => l.isError).toList();
+      logs = widget.logs.where((l) => l.isError).toList();
+    } else if (_selectedFilter == 'flutter') {
+      logs = widget.logs.where((l) => l.source == 'flutter').toList();
+    } else if (_selectedFilter == 'web') {
+      logs = widget.logs.where((l) => l.source == 'web').toList();
+    } else {
+      logs = widget.logs;
     }
-    if (_selectedFilter == 'flutter') {
-      return widget.logs.where((l) => l.source == 'flutter').toList();
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      logs = logs.where((l) => l.message.toLowerCase().contains(q)).toList();
     }
-    if (_selectedFilter == 'web') {
-      return widget.logs.where((l) => l.source == 'web').toList();
-    }
-    return widget.logs;
+
+    return logs;
   }
 
   void _copyAllLogs() {
@@ -169,7 +185,54 @@ class _MiniTerminalDrawerState extends State<MiniTerminalDrawer> {
               _buildFilterChip('web', 'Web'),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+
+          // Real-time search bar
+          Container(
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F0F0F),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _searchQuery.isNotEmpty ? AppTheme.cyan.withValues(alpha: 0.6) : AppTheme.borderSubtle,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(left: 10, right: 6),
+                  child: Icon(Icons.search_rounded, size: 16, color: AppTheme.textMuted),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Search console events...',
+                      hintStyle: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.cancel_rounded, size: 14, color: AppTheme.textMuted),
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
 
           // Log Entries List
           Expanded(
@@ -183,7 +246,9 @@ class _MiniTerminalDrawerState extends State<MiniTerminalDrawer> {
               child: _filteredLogs.isEmpty
                   ? Center(
                       child: Text(
-                        'No console events recorded yet.',
+                        _searchQuery.isNotEmpty
+                            ? 'No console events matching "$_searchQuery".'
+                            : 'No console events recorded yet.',
                         style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textMuted),
                       ),
                     )

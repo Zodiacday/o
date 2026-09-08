@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/preview_diagnostic.dart';
@@ -17,6 +18,7 @@ class PreviewDiagnosticsChannel {
   final PreviewHealthyHandler onHealthy;
   final void Function(String message, String level, String source)? onLog;
   final void Function(bool connected)? onConnectionChanged;
+  final VoidCallback? onBugReportAck;
 
   WebSocketChannel? _channel;
   StreamSubscription<Object?>? _subscription;
@@ -72,6 +74,7 @@ class PreviewDiagnosticsChannel {
     required this.onHealthy,
     this.onLog,
     this.onConnectionChanged,
+    this.onBugReportAck,
   });
 
   Future<void> connect() async {
@@ -132,6 +135,11 @@ class PreviewDiagnosticsChannel {
         decoded['type'] == 'healthy' &&
         decoded['stage'] is String) {
       onHealthy();
+      return;
+    }
+
+    if (decoded is Map && decoded['type'] == 'bug_report_ack') {
+      onBugReportAck?.call();
       return;
     }
 

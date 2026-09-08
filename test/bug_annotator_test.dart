@@ -31,7 +31,11 @@ void main() {
     expect(find.text('Arrow'), findsOneWidget);
     expect(find.text('Box'), findsOneWidget);
     expect(find.text('Pen'), findsOneWidget);
+    expect(find.text('Eraser'), findsOneWidget);
     expect(find.text('Send to PC'), findsOneWidget);
+
+    await tester.tap(find.text('Eraser'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Send to PC'));
     await tester.pump();
