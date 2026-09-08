@@ -139,7 +139,6 @@ class ViewportSwitcherSheet extends StatelessWidget {
                   onTap: () {
                     HapticFeedback.selectionClick();
                     onSelect(profile);
-                    Navigator.of(context).pop();
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(

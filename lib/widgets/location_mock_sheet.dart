@@ -160,7 +160,6 @@ class LocationMockSheet extends StatelessWidget {
                   onTap: () {
                     HapticFeedback.selectionClick();
                     onSelect(preset);
-                    Navigator.of(context).pop();
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(

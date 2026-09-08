@@ -25,7 +25,7 @@ class ScansTab extends StatelessWidget {
   final VoidCallback onCopyCommand;
   final bool isScannerBusy;
   final NetworkStatusService? networkService;
-  final void Function(String url, {String? title}) onLaunchApp;
+  final void Function(String url, {String? title, String? controlUrl}) onLaunchApp;
   final void Function(SessionItem item) onLongPressItem;
   final void Function(SessionItem item)? onDeleteItem;
   final Uint8List? capturedPhotoBytes;
@@ -220,7 +220,7 @@ class ScansTab extends StatelessWidget {
                         title: item.title,
                         subtitle:
                             '${_formatEndpoint(item.url)} · ${item.timeAgo}',
-                        onTap: () => onLaunchApp(item.url, title: item.title),
+                        onTap: () => onLaunchApp(item.url, title: item.title, controlUrl: item.controlUrl),
                         onLongPress: () => onLongPressItem(item),
                         semanticLabel: 'Open ${item.title} preview',
                       ),

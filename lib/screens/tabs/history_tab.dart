@@ -12,7 +12,7 @@ import '../../widgets/share_qr_modal.dart';
 
 class HistoryTab extends StatefulWidget {
   final List<SessionItem> history;
-  final void Function(String url, {String? title}) onLaunchApp;
+  final void Function(String url, {String? title, String? controlUrl}) onLaunchApp;
   final void Function(SessionItem item) onLongPressItem;
 
   const HistoryTab({
@@ -188,7 +188,7 @@ class _HistoryTabState extends State<HistoryTab> {
           scaleFactor: 0.99,
           onTap: () {
             HapticFeedback.selectionClick();
-            widget.onLaunchApp(item.url, title: item.title);
+            widget.onLaunchApp(item.url, title: item.title, controlUrl: item.controlUrl);
           },
           onLongPress: () => widget.onLongPressItem(item),
           child: Padding(

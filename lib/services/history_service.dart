@@ -20,7 +20,7 @@ class HistoryService {
         .toList();
   }
 
-  static Future<void> saveSession(String url, {String? title}) async {
+  static Future<void> saveSession(String url, {String? title, String? controlUrl}) async {
     final prefs = await SharedPreferences.getInstance();
     final list = await getHistory();
 
@@ -28,12 +28,14 @@ class HistoryService {
     final existingIndex = list.indexWhere((e) => e.url == url);
     bool isFav = false;
     String cleanTitle = title ?? _deriveTitle(url);
+    String? cleanControlUrl = controlUrl;
 
     if (existingIndex != -1) {
       isFav = list[existingIndex].isFavorite;
       if (title == null) {
         cleanTitle = list[existingIndex].title;
       }
+      cleanControlUrl ??= list[existingIndex].controlUrl;
       list.removeAt(existingIndex);
     }
 
@@ -45,6 +47,7 @@ class HistoryService {
         title: cleanTitle,
         timestamp: DateTime.now(),
         isFavorite: isFav,
+        controlUrl: cleanControlUrl,
       ),
     );
 

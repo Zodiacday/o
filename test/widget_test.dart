@@ -15,6 +15,7 @@ void main() {
       title: 'Sink Flutter',
       timestamp: DateTime(2026, 8, 29, 12, 0),
       isFavorite: true,
+      controlUrl: 'ws://192.168.0.25:8082/events?token=abc',
     );
 
     final json = item.toJson();
@@ -24,6 +25,7 @@ void main() {
     expect(reconstructed.url, equals('http://192.168.0.25:8081'));
     expect(reconstructed.title, equals('Sink Flutter'));
     expect(reconstructed.isFavorite, isTrue);
+    expect(reconstructed.controlUrl, equals('ws://192.168.0.25:8082/events?token=abc'));
   });
 
   test('AppTheme loads dark theme correctly', () {

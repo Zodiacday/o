@@ -116,6 +116,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
           });
         },
+        onConnectionChanged: (connected) {
+          if (mounted) setState(() {});
+        },
       );
       unawaited(_diagnosticsChannel!.connect());
     }

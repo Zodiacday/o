@@ -16,6 +16,7 @@ class PreviewDiagnosticsChannel {
   final PreviewDiagnosticHandler onDiagnostic;
   final PreviewHealthyHandler onHealthy;
   final void Function(String message, String level, String source)? onLog;
+  final void Function(bool connected)? onConnectionChanged;
 
   WebSocketChannel? _channel;
   StreamSubscription<Object?>? _subscription;
@@ -59,6 +60,7 @@ class PreviewDiagnosticsChannel {
   void _reconnect() {
     if (_disposed) return;
     _connected = false;
+    onConnectionChanged?.call(false);
     _channel = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(seconds: 2), connect);
@@ -69,6 +71,7 @@ class PreviewDiagnosticsChannel {
     required this.onDiagnostic,
     required this.onHealthy,
     this.onLog,
+    this.onConnectionChanged,
   });
 
   Future<void> connect() async {
@@ -82,6 +85,7 @@ class PreviewDiagnosticsChannel {
       await channel.ready;
       if (_disposed) return;
       _connected = true;
+      onConnectionChanged?.call(true);
       if (_latestProgress != null) channel.sink.add(jsonEncode(_latestProgress));
       _subscription = channel.stream.listen(
         _handleMessage,
@@ -100,6 +104,7 @@ class PreviewDiagnosticsChannel {
     _disposed = true;
     _reconnectTimer?.cancel();
     _connected = false;
+    onConnectionChanged?.call(false);
     await _subscription?.cancel();
     _subscription = null;
     await _closeChannel();

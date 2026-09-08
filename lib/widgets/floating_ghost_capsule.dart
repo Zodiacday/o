@@ -151,8 +151,11 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: widget.isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
+                    color: widget.isCliConnected ? AppTheme.cyan : AppTheme.warning,
                     shape: BoxShape.circle,
+                    boxShadow: widget.isCliConnected
+                        ? [BoxShadow(color: AppTheme.cyan.withValues(alpha: 0.6), blurRadius: 4)]
+                        : null,
                   ),
                 ).animate(target: _isReloading ? 1 : 0).scale(
                       begin: const Offset(1, 1),
@@ -163,7 +166,7 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
                 Icon(
                   Icons.bolt_rounded,
                   size: 15,
-                  color: widget.isCliConnected ? AppTheme.cyan : Colors.white70,
+                  color: widget.isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
                 ),
                 const SizedBox(width: 4),
                 Text(

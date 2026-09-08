@@ -4,6 +4,7 @@ class SessionItem {
   final String title;
   final DateTime timestamp;
   final bool isFavorite;
+  final String? controlUrl;
 
   SessionItem({
     required this.id,
@@ -11,6 +12,7 @@ class SessionItem {
     required this.title,
     required this.timestamp,
     this.isFavorite = false,
+    this.controlUrl,
   });
 
   String get timeAgo {
@@ -29,6 +31,7 @@ class SessionItem {
     String? title,
     DateTime? timestamp,
     bool? isFavorite,
+    String? controlUrl,
   }) {
     return SessionItem(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class SessionItem {
       title: title ?? this.title,
       timestamp: timestamp ?? this.timestamp,
       isFavorite: isFavorite ?? this.isFavorite,
+      controlUrl: controlUrl ?? this.controlUrl,
     );
   }
 
@@ -45,6 +49,7 @@ class SessionItem {
     'title': title,
     'timestamp': timestamp.toIso8601String(),
     'isFavorite': isFavorite,
+    if (controlUrl != null) 'controlUrl': controlUrl,
   };
 
   factory SessionItem.fromJson(Map<String, dynamic> json) => SessionItem(
@@ -54,6 +59,7 @@ class SessionItem {
     timestamp:
         DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
     isFavorite: json['isFavorite'] as bool? ?? false,
+    controlUrl: json['controlUrl'] as String?,
   );
 }
 

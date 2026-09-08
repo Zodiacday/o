@@ -110,7 +110,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (url, {title}) {},
+          onLaunchApp: (url, {title, controlUrl}) {},
           onLongPressItem: (_) {},
           capturedPhotoBytes: imageBytes,
           onDismissCapturedPhoto: () {},

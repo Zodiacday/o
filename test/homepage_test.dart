@@ -112,7 +112,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (url, {title}) {},
+          onLaunchApp: (url, {title, controlUrl}) {},
           onLongPressItem: (_) {},
           networkService: _FakeNetworkStatusService(),
         ),
@@ -148,7 +148,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (value, {title}) => launchedUrl = value,
+          onLaunchApp: (value, {title, controlUrl}) => launchedUrl = value,
           onLongPressItem: (_) {},
           networkService: _FakeNetworkStatusService(),
         ),
@@ -180,7 +180,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (value, {title}) {},
+          onLaunchApp: (value, {title, controlUrl}) {},
           onLongPressItem: (_) {},
           nearbyPreviews: const [
             NearbyPreview(

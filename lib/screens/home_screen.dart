@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String? title,
     String? controlUrl,
   }) async {
-    await HistoryService.saveSession(url, title: title);
+    await HistoryService.saveSession(url, title: title, controlUrl: controlUrl);
     await _loadHistory();
 
     if (!mounted) return;
@@ -206,7 +206,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final connection = PreviewConnection.tryParse(text ?? '');
     if (connection != null) {
       HapticFeedback.mediumImpact();
-      _launchApp(connection.url, title: connection.projectName);
+      _launchApp(
+        connection.url,
+        title: connection.projectName,
+        controlUrl: connection.controlUrl,
+      );
     } else {
       if (mounted) {
         toastification.show(
