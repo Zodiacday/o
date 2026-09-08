@@ -15,6 +15,31 @@ void main() {
       expect(NativeBridgeHandler.injectionScript, contains('setStatusBarStyle'));
       expect(NativeBridgeHandler.injectionScript, contains('window.safeAreaInsets'));
       expect(NativeBridgeHandler.injectionScript, contains('ExpoStatusBar'));
+      expect(NativeBridgeHandler.injectionScript, contains('setNetworkCondition'));
+      expect(NativeBridgeHandler.injectionScript, contains('setMockLocation'));
+    });
+
+    test('buildSetNetworkConditionScript formats JS statement correctly', () {
+      final scriptOffline = NativeBridgeHandler.buildSetNetworkConditionScript('offline');
+      expect(scriptOffline, contains('window.PreviewPort.setNetworkCondition("offline")'));
+
+      final script3G = NativeBridgeHandler.buildSetNetworkConditionScript('3g');
+      expect(script3G, contains('window.PreviewPort.setNetworkCondition("3g")'));
+    });
+
+    test('buildSetMockLocationScript formats custom and null coordinates correctly', () {
+      final scriptMock = NativeBridgeHandler.buildSetMockLocationScript(
+        latitude: 37.3349,
+        longitude: -122.0090,
+      );
+      expect(scriptMock, contains('latitude: 37.334900'));
+      expect(scriptMock, contains('longitude: -122.009000'));
+
+      final scriptClear = NativeBridgeHandler.buildSetMockLocationScript(
+        latitude: null,
+        longitude: null,
+      );
+      expect(scriptClear, contains('window.PreviewPort.setMockLocation(null)'));
     });
 
     test('buildInjectionScript populates hardware metrics and Dynamic Island detection', () {

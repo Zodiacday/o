@@ -12,6 +12,8 @@ import '../services/native_bridge.dart';
 import '../models/preview_diagnostic.dart';
 import '../widgets/preview_loading_progress.dart';
 import '../widgets/preview_error_sheet.dart';
+import '../widgets/location_mock_sheet.dart';
+import '../widgets/viewport_switcher_sheet.dart';
 
 class AppViewerScreen extends StatefulWidget {
   final String url;
@@ -47,6 +49,11 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   PreviewDiagnosticsChannel? _diagnosticsChannel;
   Timer? _loadingCompletionTimer;
   DateTime? _loadingStartedAt;
+
+  // PreviewPort 2.0 Simulation State
+  String _networkCondition = 'normal'; // 'normal' | '3g' | 'offline'
+  MockLocationPreset _selectedLocation = defaultLocationPresets.first;
+  SimulatedDeviceProfile _selectedDevice = defaultDeviceProfiles.first;
 
   @override
   void initState() {
@@ -148,6 +155,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     EdgeInsets insets = EdgeInsets.zero;
     Size size = Size.zero;
     double pixelRatio = 1.0;
+
     if (mounted) {
       final mq = MediaQuery.maybeOf(context);
       if (mq != null) {
@@ -157,19 +165,60 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       }
     }
 
+    final double topInset;
+    final double bottomInset;
+    final double leftInset;
+    final double rightInset;
+    final double width;
+    final double height;
+    final String platform;
+
+    if (_selectedDevice.isNative) {
+      topInset = insets.top;
+      bottomInset = insets.bottom;
+      leftInset = insets.left;
+      rightInset = insets.right;
+      width = size.width;
+      height = size.height;
+      platform = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+    } else {
+      topInset = _selectedDevice.topInset;
+      bottomInset = _selectedDevice.bottomInset;
+      leftInset = 0;
+      rightInset = 0;
+      width = _selectedDevice.width ?? size.width;
+      height = _selectedDevice.height ?? size.height;
+      platform = _selectedDevice.id == 'android_punch_hole' ? 'android' : 'ios';
+    }
+
     final script = NativeBridgeHandler.buildInjectionScript(
-      topInset: insets.top,
-      bottomInset: insets.bottom,
-      leftInset: insets.left,
-      rightInset: insets.right,
-      width: size.width,
-      height: size.height,
+      topInset: topInset,
+      bottomInset: bottomInset,
+      leftInset: leftInset,
+      rightInset: rightInset,
+      width: width,
+      height: height,
       pixelRatio: pixelRatio,
-      platform: defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android',
+      platform: platform,
     );
 
     unawaited(_controller
         .runJavaScript(script)
+        .then((_) {
+          if (_networkCondition != 'normal') {
+            _controller.runJavaScript(
+              NativeBridgeHandler.buildSetNetworkConditionScript(_networkCondition),
+            );
+          }
+          if (!_selectedLocation.isRealGps) {
+            _controller.runJavaScript(
+              NativeBridgeHandler.buildSetMockLocationScript(
+                latitude: _selectedLocation.latitude,
+                longitude: _selectedLocation.longitude,
+              ),
+            );
+          }
+        })
         .catchError((_) {}));
   }
 
@@ -236,11 +285,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         backgroundColor: AppTheme.background,
         body: Stack(
           children: [
-            // 1. Zero-Chrome Fullscreen Native WebView Container
+            // 1. Viewport Container (Native Fullscreen or Scaled Device Simulation Frame)
             Positioned.fill(
-              child: _useSafeArea
-                  ? SafeArea(child: WebViewWidget(controller: _controller))
-                  : WebViewWidget(controller: _controller),
+              child: _buildViewportContent(),
             ),
 
             // Keep startup focused on one calm, live progress surface while
@@ -271,6 +318,147 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildViewportContent() {
+    if (_selectedDevice.isNative) {
+      return _useSafeArea
+          ? SafeArea(child: WebViewWidget(controller: _controller))
+          : WebViewWidget(controller: _controller);
+    }
+
+    final targetW = _selectedDevice.width!;
+    final targetH = _selectedDevice.height!;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availW = constraints.maxWidth;
+        final availH = constraints.maxHeight;
+
+        // Scale down to comfortably fit inside the physical phone viewport with workbench padding
+        final horizontalPadding = 32.0;
+        final verticalPadding = 80.0;
+        final scaleX = (availW - horizontalPadding) / targetW;
+        final scaleY = (availH - verticalPadding) / targetH;
+        final scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.2, 1.0);
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Dark device workbench backdrop
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF070707),
+              ),
+            ),
+
+            // Top device indicator badge
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _openViewportSwitcher();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_selectedDevice.icon, size: 13, color: AppTheme.cyan),
+                      const SizedBox(width: 6),
+                      Text(
+                        _selectedDevice.name,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.tune_rounded, size: 12, color: AppTheme.textSecondary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Scaled device chassis frame
+            Transform.scale(
+              scale: scale,
+              child: Container(
+                width: targetW,
+                height: targetH,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(_selectedDevice.cornerRadius),
+                  border: Border.all(
+                    color: const Color(0xFF333333),
+                    width: 3.5,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black87,
+                      blurRadius: 36,
+                      spreadRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: WebViewWidget(controller: _controller),
+                    ),
+
+                    // Punch-hole camera cutout if simulated android device
+                    if (_selectedDevice.hasNotch)
+                      Positioned(
+                        top: 10,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF080808),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                    // Bottom gesture indicator bar if simulated
+                    if (_selectedDevice.bottomInset > 0)
+                      Positioned(
+                        bottom: 6,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Container(
+                            width: 120,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.28),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -320,6 +508,79 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     _controller.reload();
   }
 
+  void _triggerRemoteReload() {
+    HapticFeedback.mediumImpact();
+    if (_diagnosticsChannel == null || !_diagnosticsChannel!.isConnected) {
+      _showToast(
+        icon: Icons.wifi_off_rounded,
+        label: 'Workstation CLI channel offline',
+        color: AppTheme.warning,
+      );
+      return;
+    }
+    _diagnosticsChannel!.triggerHotReload();
+    _showToast(
+      icon: Icons.bolt_rounded,
+      label: '⚡ Hot Reload triggered',
+      color: AppTheme.cyan,
+    );
+  }
+
+  void _triggerRemoteRestart() {
+    HapticFeedback.heavyImpact();
+    if (_diagnosticsChannel == null || !_diagnosticsChannel!.isConnected) {
+      _showToast(
+        icon: Icons.wifi_off_rounded,
+        label: 'Workstation CLI channel offline',
+        color: AppTheme.warning,
+      );
+      return;
+    }
+    _diagnosticsChannel!.triggerHotRestart();
+    _showToast(
+      icon: Icons.restart_alt_rounded,
+      label: '⚡ Hot Restart triggered',
+      color: AppTheme.primary,
+    );
+  }
+
+  void _showToast({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xF0111111),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: color.withValues(alpha: 0.5)),
+        ),
+        content: Row(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(milliseconds: 1800),
+      ),
+    );
+  }
+
   void _completeLoadingWhenVisibleLongEnough() {
     final startedAt = _loadingStartedAt ?? DateTime.now();
     final elapsed = DateTime.now().difference(startedAt);
@@ -367,6 +628,77 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     setState(() => _isMenuOpen = false);
   }
 
+  void _openLocationMockSheet() {
+    _closeMenu();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => LocationMockSheet(
+        selected: _selectedLocation,
+        onSelect: (preset) {
+          Navigator.of(ctx).pop();
+          setState(() => _selectedLocation = preset);
+          _controller.runJavaScript(
+            NativeBridgeHandler.buildSetMockLocationScript(
+              latitude: preset.latitude,
+              longitude: preset.longitude,
+            ),
+          );
+          _showToast(
+            icon: Icons.location_on_rounded,
+            label: 'Location: ${preset.title}',
+            color: AppTheme.cyan,
+          );
+        },
+        onCustom: (lat, lng, name) {
+          final customPreset = MockLocationPreset(
+            id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+            title: name,
+            subtitle: '${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°',
+            latitude: lat,
+            longitude: lng,
+            icon: Icons.edit_location_alt_rounded,
+          );
+          setState(() => _selectedLocation = customPreset);
+          _controller.runJavaScript(
+            NativeBridgeHandler.buildSetMockLocationScript(
+              latitude: lat,
+              longitude: lng,
+            ),
+          );
+          _showToast(
+            icon: Icons.location_on_rounded,
+            label: 'Location: $name',
+            color: AppTheme.cyan,
+          );
+        },
+      ),
+    );
+  }
+
+  void _openViewportSwitcher() {
+    _closeMenu();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ViewportSwitcherSheet(
+        selected: _selectedDevice,
+        onSelect: (device) {
+          Navigator.of(ctx).pop();
+          setState(() => _selectedDevice = device);
+          _injectBridge();
+          _showToast(
+            icon: device.icon,
+            label: 'Viewport: ${device.name}',
+            color: AppTheme.cyan,
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildMenuOverlay() {
     return Positioned.fill(
       child: IgnorePointer(
@@ -399,19 +731,21 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   }
 
   Widget _buildExpandedMenu() {
+    final isCliConnected = _diagnosticsChannel?.isConnected ?? false;
+
     return Container(
-      width: 278,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      width: 290,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: const Color(0xF20A0A0A),
+        color: const Color(0xF40C0C0C),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: AppTheme.previewBorder.withValues(alpha: 0.8),
         ),
         boxShadow: const [
           BoxShadow(
-            color: Colors.black54,
-            blurRadius: 34,
+            color: Colors.black87,
+            blurRadius: 36,
             offset: Offset(0, 14),
           ),
         ],
@@ -420,6 +754,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -430,7 +765,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                     Text(
                       _dynamicTitle ?? 'Preview controls',
                       style: GoogleFonts.inter(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.textPrimary,
                       ),
@@ -443,18 +778,18 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                         Container(
                           width: 6,
                           height: 6,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.cyan,
+                          decoration: BoxDecoration(
+                            color: isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          'Native Bridge Active',
+                          isCliConnected ? 'CLI Live Synced' : 'Native Bridge Active',
                           style: GoogleFonts.inter(
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: AppTheme.cyan,
+                            color: isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
                           ),
                         ),
                       ],
@@ -476,12 +811,115 @@ class _AppViewerScreenState extends State<AppViewerScreen>
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: AppTheme.borderSubtle),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
+
+          // ⚡ Hot Reload & Restart Quick Action Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.cyan.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.cyan.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _triggerRemoteReload,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.bolt_rounded, size: 18, color: AppTheme.cyan),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Hot Reload',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.cyan,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: AppTheme.cyan.withValues(alpha: 0.25),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: _triggerRemoteRestart,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Text(
+                      'Restart',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Network Conditioning Segment Selector
+          Text(
+            'NETWORK CONDITIONING',
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161616),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.borderSubtle),
+            ),
+            child: Row(
+              children: [
+                _buildNetworkSegment('normal', 'Normal'),
+                _buildNetworkSegment('3g', '3G Throttle'),
+                _buildNetworkSegment('offline', 'Offline'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Simulation Drawer Links (Location & Viewport)
+          _buildMenuNavRow(
+            icon: Icons.place_rounded,
+            label: 'Location',
+            currentValue: _selectedLocation.title,
+            onTap: _openLocationMockSheet,
+          ),
+          _buildMenuNavRow(
+            icon: Icons.devices_rounded,
+            label: 'Viewport',
+            currentValue: _selectedDevice.name,
+            onTap: _openViewportSwitcher,
+          ),
+
+          const Divider(height: 14, color: AppTheme.borderSubtle),
+
+          // Maintenance & Tools
           _buildMenuRow(
             icon: Icons.refresh_rounded,
-            label: 'Reload preview',
+            label: 'Reload webview',
             onTap: () {
               HapticFeedback.mediumImpact();
               setState(() => _isMenuOpen = false);
@@ -490,7 +928,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           ),
           _buildMenuRow(
             icon: Icons.cleaning_services_rounded,
-            label: 'Clear preview data',
+            label: 'Clear cache & reload',
             onTap: () async {
               HapticFeedback.mediumImpact();
               setState(() => _isMenuOpen = false);
@@ -518,20 +956,14 @@ class _AppViewerScreenState extends State<AppViewerScreen>
               HapticFeedback.selectionClick();
               Clipboard.setData(ClipboardData(text: widget.url));
               setState(() => _isMenuOpen = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: AppTheme.surface,
-                  content: Text(
-                    'Preview link copied',
-                    style: GoogleFonts.inter(color: Colors.white, fontSize: 12),
-                  ),
-                  duration: const Duration(seconds: 1),
-                ),
+              _showToast(
+                icon: Icons.check_circle_rounded,
+                label: 'Preview link copied',
+                color: AppTheme.cyan,
               );
             },
           ),
-          const Divider(height: 1, color: AppTheme.borderSubtle),
-          const SizedBox(height: 4),
+          const Divider(height: 14, color: AppTheme.borderSubtle),
           _buildMenuRow(
             icon: Icons.close_rounded,
             label: 'Return to scanner',
@@ -547,6 +979,97 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     );
   }
 
+  Widget _buildNetworkSegment(String condition, String label) {
+    final isSelected = _networkCondition == condition;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _networkCondition = condition);
+          _controller.runJavaScript(
+            NativeBridgeHandler.buildSetNetworkConditionScript(condition),
+          );
+          _showToast(
+            icon: condition == 'offline'
+                ? Icons.wifi_off_rounded
+                : condition == '3g'
+                    ? Icons.network_check_rounded
+                    : Icons.wifi_rounded,
+            label: 'Network: $label',
+            color: condition == 'offline' ? AppTheme.danger : AppTheme.cyan,
+          );
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white.withValues(alpha: 0.14) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : AppTheme.textSecondary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuNavRow({
+    required IconData icon,
+    required String label,
+    required String currentValue,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: Colors.white70),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+            const Spacer(),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 110),
+              child: Text(
+                currentValue,
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.cyan,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 14,
+              color: AppTheme.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuRow({
     required IconData icon,
     required String label,
@@ -557,7 +1080,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         child: Row(
           children: [
             Icon(icon, size: 15, color: color),

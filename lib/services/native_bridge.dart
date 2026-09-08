@@ -87,6 +87,29 @@ class NativeBridgeHandler {
   /// Default baseline script for static evaluation or testing.
   static String get injectionScript => buildInjectionScript();
 
+  /// Generates script to update network condition ('normal', '3g', 'offline').
+  static String buildSetNetworkConditionScript(String condition) {
+    final sanitized = condition.replaceAll('"', '');
+    return 'try { if (window.PreviewPort && window.PreviewPort.setNetworkCondition) { window.PreviewPort.setNetworkCondition("$sanitized"); } } catch (e) {}';
+  }
+
+  /// Generates script to update mock geolocation coordinates or clear them.
+  static String buildSetMockLocationScript({
+    double? latitude,
+    double? longitude,
+    double? altitude,
+    double? accuracy,
+  }) {
+    if (latitude == null || longitude == null) {
+      return 'try { if (window.PreviewPort && window.PreviewPort.setMockLocation) { window.PreviewPort.setMockLocation(null); } } catch (e) {}';
+    }
+    final lat = latitude.toStringAsFixed(6);
+    final lng = longitude.toStringAsFixed(6);
+    final alt = (altitude ?? 15.0).toStringAsFixed(1);
+    final acc = (accuracy ?? 5.0).toStringAsFixed(1);
+    return 'try { if (window.PreviewPort && window.PreviewPort.setMockLocation) { window.PreviewPort.setMockLocation({ latitude: $lat, longitude: $lng, altitude: $alt, accuracy: $acc }); } } catch (e) {}';
+  }
+
   static const String _coreScript = r'''
 (function() {
   if (window.__previewPortBridgeInjected) return;
@@ -182,6 +205,108 @@ class NativeBridgeHandler {
       window.PreviewPort.setStatusBarStyle(style);
     }
   };
+
+  // 5. Network Conditioning (offline, 3g, normal)
+  window.__previewPortNetworkState = 'normal';
+  window.PreviewPort.setNetworkCondition = function(condition) {
+    window.__previewPortNetworkState = condition || 'normal';
+    if (condition === 'offline') {
+      try { window.dispatchEvent(new Event('offline')); } catch (e) {}
+    } else {
+      try { window.dispatchEvent(new Event('online')); } catch (e) {}
+    }
+  };
+
+  try {
+    var originalFetch = window.fetch;
+    if (originalFetch) {
+      window.fetch = function(input, init) {
+        if (window.__previewPortNetworkState === 'offline') {
+          return Promise.reject(new TypeError('Failed to fetch (PreviewPort offline mode)'));
+        }
+        if (window.__previewPortNetworkState === '3g') {
+          return new Promise(function(resolve, reject) {
+            setTimeout(function() {
+              originalFetch(input, init).then(resolve, reject);
+            }, 500);
+          });
+        }
+        return originalFetch(input, init);
+      };
+    }
+
+    var originalXhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function(body) {
+      var xhr = this;
+      if (window.__previewPortNetworkState === 'offline') {
+        setTimeout(function() {
+          xhr.dispatchEvent(new ProgressEvent('error'));
+        }, 10);
+        return;
+      }
+      if (window.__previewPortNetworkState === '3g') {
+        setTimeout(function() {
+          try { originalXhrSend.call(xhr, body); } catch (e) {}
+        }, 500);
+        return;
+      }
+      return originalXhrSend.call(xhr, body);
+    };
+  } catch (e) {}
+
+  // 6. Geo-Location & GPS Mocking
+  window.__previewPortMockLocation = null;
+  window.PreviewPort.setMockLocation = function(loc) {
+    window.__previewPortMockLocation = loc;
+  };
+
+  try {
+    if (navigator.geolocation) {
+      var origGetCurrentPosition = navigator.geolocation.getCurrentPosition.bind(navigator.geolocation);
+      navigator.geolocation.getCurrentPosition = function(success, error, options) {
+        if (window.__previewPortMockLocation && typeof success === 'function') {
+          var m = window.__previewPortMockLocation;
+          var pos = {
+            coords: {
+              latitude: m.latitude,
+              longitude: m.longitude,
+              altitude: m.altitude || 15.0,
+              accuracy: m.accuracy || 5.0,
+              altitudeAccuracy: 5.0,
+              heading: null,
+              speed: null
+            },
+            timestamp: Date.now()
+          };
+          setTimeout(function() { success(pos); }, 15);
+          return;
+        }
+        return origGetCurrentPosition(success, error, options);
+      };
+
+      var origWatchPosition = navigator.geolocation.watchPosition.bind(navigator.geolocation);
+      navigator.geolocation.watchPosition = function(success, error, options) {
+        if (window.__previewPortMockLocation && typeof success === 'function') {
+          var m = window.__previewPortMockLocation;
+          var pos = {
+            coords: {
+              latitude: m.latitude,
+              longitude: m.longitude,
+              altitude: m.altitude || 15.0,
+              accuracy: m.accuracy || 5.0,
+              altitudeAccuracy: 5.0,
+              heading: null,
+              speed: null
+            },
+            timestamp: Date.now()
+          };
+          setTimeout(function() { success(pos); }, 15);
+          return 9999;
+        }
+        return origWatchPosition(success, error, options);
+      };
+    }
+  } catch (e) {}
 
   // 5. Automatic status bar color detection based on document background / theme-color
   function detectAndSyncTheme() {

@@ -23,6 +23,18 @@ class PreviewDiagnosticsChannel {
   Map<String, Object?>? _latestProgress;
   Timer? _reconnectTimer;
 
+  bool get isConnected => _connected;
+
+  void triggerHotReload() {
+    if (_disposed || !_connected) return;
+    _channel?.sink.add(jsonEncode({'type': 'action', 'action': 'reload'}));
+  }
+
+  void triggerHotRestart() {
+    if (_disposed || !_connected) return;
+    _channel?.sink.add(jsonEncode({'type': 'action', 'action': 'restart'}));
+  }
+
   void reportProgress(int percent, {String state = 'loading'}) {
     if (_disposed) return;
     _latestProgress = {
