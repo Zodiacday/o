@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/nearby_preview.dart';
 import '../theme/app_theme.dart';
@@ -52,12 +52,7 @@ class AmbientResumeCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'LIVE WORKSTATION SENSED',
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: AppTheme.cyan,
-              ),
+              style: AppTypography.sectionHud(color: AppTheme.cyan),
             ),
           ],
         ),
@@ -102,7 +97,7 @@ class AmbientResumeCard extends StatelessWidget {
                         ),
                       ),
                       child: const Icon(
-                        LucideIcons.monitor,
+                        PhosphorIconsRegular.desktop,
                         color: AppTheme.cyan,
                         size: 22,
                       ),
@@ -114,22 +109,14 @@ class AmbientResumeCard extends StatelessWidget {
                         children: [
                           Text(
                             preview.projectName,
-                            style: GoogleFonts.inter(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                              letterSpacing: -0.4,
-                            ),
+                            style: AppTypography.headline(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 3),
                           Text(
                             '${preview.displayEndpoint} · Ready on Wi-Fi',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary,
-                            ),
+                            style: AppTypography.monoData(),
                           ),
                         ],
                       ),
@@ -155,18 +142,14 @@ class AmbientResumeCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(
-                        Icons.bolt_rounded,
+                        PhosphorIconsRegular.lightning,
                         color: Colors.black,
                         size: 18,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Tap to Resume Preview',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
+                        style: AppTypography.button(color: Colors.black),
                       ),
                     ],
                   ),
@@ -183,7 +166,7 @@ class AmbientResumeCard extends StatelessWidget {
               onScanQr();
             },
             icon: const Icon(
-              LucideIcons.qr_code,
+              PhosphorIconsRegular.qrCode,
               size: 14,
               color: AppTheme.textSecondary,
             ),

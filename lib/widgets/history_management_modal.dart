@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
-import 'package:toastification/toastification.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../models/session_item.dart';
 import '../services/history_service.dart';
 import '../theme/app_theme.dart';
+import 'app_toast.dart';
 
 class HistoryManagementModal extends StatefulWidget {
   final VoidCallback onUpdated;
@@ -126,23 +126,9 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
   }
 
   void _showToast(String message) {
-    toastification.show(
-      context: context,
-      type: ToastificationType.info,
-      style: ToastificationStyle.flat,
-      title: Text(
-        message,
-        style: GoogleFonts.inter(
-          fontWeight: FontWeight.w600,
-          color: AppTheme.textPrimary,
-          fontSize: 13,
-        ),
-      ),
-      alignment: Alignment.topCenter,
-      autoCloseDuration: const Duration(seconds: 2),
-      primaryColor: AppTheme.cyan,
-      backgroundColor: AppTheme.previewSurfaceElevated,
-      foregroundColor: AppTheme.textPrimary,
+    AppToast.info(
+      context,
+      title: message,
     );
   }
 
@@ -204,7 +190,7 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
                       tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(
-                        LucideIcons.x,
+                        PhosphorIconsRegular.x,
                         size: 19,
                         color: AppTheme.textSecondary,
                       ),
@@ -226,13 +212,13 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
                   if (_selectedIds.isNotEmpty)
                     _buildActionRow(
                       label: 'Delete ${_selectedIds.length} selected',
-                      icon: LucideIcons.trash_2,
+                      icon: PhosphorIconsRegular.trash,
                       color: AppTheme.textSecondary,
                       onTap: _deleteSelected,
                     ),
                   _buildActionRow(
                     label: 'Clear all history',
-                    icon: LucideIcons.trash,
+                    icon: PhosphorIconsRegular.trash,
                     color: AppTheme.danger,
                     onTap: _confirmClearAll,
                   ),
@@ -258,7 +244,7 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
-              LucideIcons.clock_3,
+              PhosphorIconsRegular.clock,
               color: AppTheme.textMuted,
               size: 24,
             ),
@@ -351,7 +337,7 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
                   tooltip: 'Remove ${item.title}',
                   onPressed: () => _deleteSingle(item),
                   icon: const Icon(
-                    LucideIcons.trash_2,
+                    PhosphorIconsRegular.trash,
                     size: 16,
                     color: AppTheme.textMuted,
                   ),
@@ -390,7 +376,7 @@ class _HistoryManagementModalState extends State<HistoryManagementModal> {
                 ),
               ),
               const Spacer(),
-              Icon(LucideIcons.chevron_right, size: 15, color: color),
+              Icon(PhosphorIconsRegular.caretRight, size: 15, color: color),
             ],
           ),
         ),

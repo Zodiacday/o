@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 
@@ -148,27 +147,25 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
         },
         child: AnimatedOpacity(
           opacity: _opacity,
-          duration: const Duration(milliseconds: 260),
+          duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 160),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xE60A0A0A),
-              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xF2101216),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _isReloading
                     ? AppTheme.cyan
-                    : AppTheme.previewBorder.withValues(alpha: 0.9),
-                width: _isReloading ? 1.5 : 1.0,
+                    : const Color(0x33FFFFFF),
+                width: 0.8,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _isReloading
-                      ? AppTheme.cyan.withValues(alpha: 0.4)
-                      : Colors.black.withValues(alpha: 0.4),
-                  blurRadius: _isReloading ? 18 : 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -176,34 +173,27 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 6,
-                  height: 6,
+                  width: 5.5,
+                  height: 5.5,
                   decoration: BoxDecoration(
                     color: widget.isCliConnected ? AppTheme.cyan : AppTheme.warning,
                     shape: BoxShape.circle,
-                    boxShadow: widget.isCliConnected
-                        ? [BoxShadow(color: AppTheme.cyan.withValues(alpha: 0.6), blurRadius: 4)]
-                        : null,
                   ),
-                ).animate(target: _isReloading ? 1 : 0).scale(
-                      begin: const Offset(1, 1),
-                      end: const Offset(1.6, 1.6),
-                      duration: 200.ms,
-                    ),
+                ),
                 const SizedBox(width: 6),
                 Icon(
-                  Icons.bolt_rounded,
-                  size: 15,
-                  color: widget.isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
+                  PhosphorIconsRegular.lightning,
+                  size: 14,
+                  color: _isReloading
+                      ? AppTheme.cyan
+                      : (widget.isCliConnected ? Colors.white : AppTheme.textSecondary),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 Text(
                   _isReloading ? 'Reloading...' : 'Reload',
-                  style: GoogleFonts.inter(
+                  style: AppTypography.button(
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
                     color: _isReloading ? AppTheme.cyan : Colors.white,
-                    letterSpacing: -0.2,
                   ),
                 ),
               ],

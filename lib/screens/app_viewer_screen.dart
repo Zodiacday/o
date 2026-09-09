@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../theme/app_theme.dart';
 import '../services/shake_detector.dart';
@@ -885,7 +886,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             ),
           );
           _showToast(
-            icon: Icons.location_on_rounded,
+            icon: PhosphorIconsRegular.mapPin,
             label: 'Location: ${preset.title}',
             color: AppTheme.cyan,
           );
@@ -897,7 +898,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             subtitle: '${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°',
             latitude: lat,
             longitude: lng,
-            icon: Icons.edit_location_alt_rounded,
+            icon: PhosphorIconsRegular.pencilSimple,
           );
           setState(() => _selectedLocation = customPreset);
           _controller.runJavaScript(
@@ -907,7 +908,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             ),
           );
           _showToast(
-            icon: Icons.location_on_rounded,
+            icon: PhosphorIconsRegular.mapPin,
             label: 'Location: $name',
             color: AppTheme.cyan,
           );
@@ -973,19 +974,20 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     final isCliConnected = _diagnosticsChannel?.isConnected ?? false;
 
     return Container(
-      width: 294,
+      width: 290,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: const Color(0xF40C0C0C),
-        borderRadius: BorderRadius.circular(22),
+        color: const Color(0xF7101216),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.previewBorder.withValues(alpha: 0.8),
+          color: const Color(0x33FFFFFF),
+          width: 0.8,
         ),
         boxShadow: const [
           BoxShadow(
             color: Colors.black87,
-            blurRadius: 36,
-            offset: Offset(0, 14),
+            blurRadius: 28,
+            offset: Offset(0, 10),
           ),
         ],
       ),
@@ -1003,11 +1005,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                   children: [
                     Text(
                       _dynamicTitle ?? 'Preview controls',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                      ),
+                      style: AppTypography.modalTitle(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1015,8 +1013,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                     Row(
                       children: [
                         Container(
-                          width: 6,
-                          height: 6,
+                          width: 5.5,
+                          height: 5.5,
                           decoration: BoxDecoration(
                             color: isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
                             shape: BoxShape.circle,
@@ -1025,10 +1023,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                         const SizedBox(width: 5),
                         Text(
                           isCliConnected ? 'CLI Live Synced' : 'Native Bridge Active',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                          style: AppTypography.monoData(
                             color: isCliConnected ? AppTheme.cyan : AppTheme.textSecondary,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -1043,22 +1040,22 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                   setState(() => _isMenuOpen = false);
                 },
                 child: const Icon(
-                  Icons.close_rounded,
-                  size: 18,
+                  PhosphorIconsRegular.x,
+                  size: 17,
                   color: AppTheme.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          // ⚡ Hot Reload & Restart Quick Action Card
+          // Hot Reload & Restart Quick Action Card
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: BoxDecoration(
-              color: AppTheme.cyan.withValues(alpha: 0.09),
+              color: const Color(0x1800E5FF),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.cyan.withValues(alpha: 0.3)),
+              border: Border.all(color: const Color(0x3300E5FF), width: 0.8),
             ),
             child: Row(
               children: [
@@ -1070,13 +1067,16 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         children: [
-                          const Icon(Icons.bolt_rounded, size: 18, color: AppTheme.cyan),
+                          const Icon(
+                            PhosphorIconsRegular.lightning,
+                            size: 16,
+                            color: AppTheme.cyan,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Hot Reload',
-                            style: GoogleFonts.inter(
+                            style: AppTypography.button(
                               fontSize: 12,
-                              fontWeight: FontWeight.w700,
                               color: AppTheme.cyan,
                             ),
                           ),
@@ -1087,8 +1087,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 ),
                 Container(
                   width: 1,
-                  height: 20,
-                  color: AppTheme.cyan.withValues(alpha: 0.25),
+                  height: 18,
+                  color: const Color(0x3300E5FF),
                 ),
                 const SizedBox(width: 8),
                 InkWell(
@@ -1096,38 +1096,42 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Text(
-                      'Restart',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white70,
-                      ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          PhosphorIconsRegular.arrowsClockwise,
+                          size: 15,
+                          color: Colors.white70,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Restart',
+                          style: AppTypography.button(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           // Network Conditioning Segment Selector
           Text(
             'NETWORK CONDITIONING',
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              color: AppTheme.textSecondary,
-            ),
+            style: AppTypography.sectionHud(color: AppTheme.textMuted),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: const Color(0xFF161616),
+              color: const Color(0xFF14161A),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.borderSubtle),
+              border: Border.all(color: AppTheme.borderSubtle, width: 0.8),
             ),
             child: Row(
               children: [
@@ -1141,25 +1145,25 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
           // Simulation Drawer Links (Location & Viewport)
           _buildMenuNavRow(
-            icon: Icons.place_rounded,
+            icon: PhosphorIconsRegular.mapPin,
             label: 'Location',
             currentValue: _selectedLocation.title,
             onTap: _openLocationMockSheet,
           ),
           _buildMenuNavRow(
-            icon: Icons.devices_rounded,
+            icon: PhosphorIconsRegular.deviceMobile,
             label: 'Viewport',
             currentValue: _selectedDevice.name,
             onTap: _openViewportSwitcher,
           ),
           _buildMenuNavRow(
-            icon: Icons.terminal_rounded,
+            icon: PhosphorIconsRegular.terminalWindow,
             label: 'Console Logs',
             currentValue: '${_terminalLogs.length} events',
             onTap: _openMiniTerminal,
           ),
           _buildMenuNavRow(
-            icon: Icons.camera_alt_rounded,
+            icon: PhosphorIconsRegular.camera,
             label: 'Annotate Bug',
             currentValue: 'Send to PC',
             onTap: _openBugAnnotator,
@@ -1169,7 +1173,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
           // Maintenance & Toggles
           _buildMenuRow(
-            icon: _showFloatingCapsule ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+            icon: _showFloatingCapsule
+                ? PhosphorIconsRegular.eye
+                : PhosphorIconsRegular.eyeSlash,
             label: _showFloatingCapsule ? 'Hide floating HUD' : 'Show floating HUD',
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1177,7 +1183,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             },
           ),
           _buildMenuRow(
-            icon: Icons.refresh_rounded,
+            icon: PhosphorIconsRegular.arrowsClockwise,
             label: 'Reload webview',
             onTap: () {
               HapticFeedback.mediumImpact();
@@ -1186,7 +1192,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             },
           ),
           _buildMenuRow(
-            icon: Icons.cleaning_services_rounded,
+            icon: PhosphorIconsRegular.trash,
             label: 'Clear cache & reload',
             onTap: () async {
               HapticFeedback.mediumImpact();
@@ -1197,8 +1203,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           ),
           _buildMenuRow(
             icon: _useSafeArea
-                ? Icons.fullscreen_rounded
-                : Icons.fullscreen_exit_rounded,
+                ? PhosphorIconsRegular.cornersOut
+                : PhosphorIconsRegular.cornersIn,
             label: _useSafeArea ? 'Use full screen' : 'Use safe area',
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1209,14 +1215,14 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             },
           ),
           _buildMenuRow(
-            icon: Icons.copy_rounded,
+            icon: PhosphorIconsRegular.copy,
             label: 'Copy preview link',
             onTap: () {
               HapticFeedback.selectionClick();
               Clipboard.setData(ClipboardData(text: widget.url));
               setState(() => _isMenuOpen = false);
               _showToast(
-                icon: Icons.check_circle_rounded,
+                icon: PhosphorIconsRegular.checkCircle,
                 label: 'Preview link copied',
                 color: AppTheme.cyan,
               );
@@ -1224,7 +1230,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           ),
           const Divider(height: 14, color: AppTheme.borderSubtle),
           _buildMenuRow(
-            icon: Icons.close_rounded,
+            icon: PhosphorIconsRegular.x,
             label: 'Return to scanner',
             color: AppTheme.danger,
             onTap: () {
@@ -1254,10 +1260,10 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           );
           _showToast(
             icon: condition == 'offline'
-                ? Icons.wifi_off_rounded
+                ? PhosphorIconsRegular.wifiSlash
                 : condition == '3g'
-                    ? Icons.network_check_rounded
-                    : Icons.wifi_rounded,
+                    ? PhosphorIconsRegular.cellSignalMedium
+                    : PhosphorIconsRegular.wifiHigh,
             label: 'Network: $label',
             color: condition == 'offline' ? AppTheme.danger : AppTheme.cyan,
           );
@@ -1272,9 +1278,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           child: Center(
             child: Text(
               label,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              style: AppTypography.button(
+                fontSize: 10.5,
                 color: isSelected ? Colors.white : AppTheme.textSecondary,
               ),
             ),
@@ -1301,30 +1306,22 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
-              ),
+              style: AppTypography.body(fontSize: 12.5),
             ),
             const Spacer(),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 110),
               child: Text(
                 currentValue,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.cyan,
-                ),
+                style: AppTypography.monoData(color: AppTheme.cyan),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 4),
             const Icon(
-              Icons.chevron_right_rounded,
-              size: 14,
+              PhosphorIconsRegular.caretRight,
+              size: 13,
               color: AppTheme.textSecondary,
             ),
           ],
@@ -1351,11 +1348,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             Expanded(
               child: Text(
                 label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color,
-                ),
+                style: AppTypography.body(fontSize: 12, color: color),
               ),
             ),
           ],
@@ -1375,21 +1368,17 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         ),
         title: Text(
           'Exit Preview?',
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+          style: AppTypography.cardTitle(),
         ),
         content: Text(
           'Return to the home dashboard?',
-          style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textSecondary),
+          style: AppTypography.body(fontSize: 13, color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             child: Text(
               'Cancel',
-              style: GoogleFonts.inter(color: AppTheme.textSecondary),
+              style: AppTypography.button(color: AppTheme.textSecondary),
             ),
             onPressed: () => Navigator.of(ctx).pop(),
           ),
@@ -1399,7 +1388,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
               foregroundColor: Colors.black,
               elevation: 0,
             ),
-            child: const Text('Exit'),
+            child: Text('Exit', style: AppTypography.button(color: Colors.black)),
             onPressed: () {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop();

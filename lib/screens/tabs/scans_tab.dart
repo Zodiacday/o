@@ -1,11 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart' hide ShimmerEffect;
 import 'package:flutter_bounceable/flutter_bounceable.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import '../../models/session_item.dart';
 import '../../models/nearby_preview.dart';
@@ -60,7 +58,7 @@ class ScansTab extends StatelessWidget {
     final list = ListView(
       controller: scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(left: 22, right: 22, top: 26, bottom: 120),
+      padding: const EdgeInsets.only(left: 22, right: 22, top: 66, bottom: 120),
       children: [
         const SizedBox(height: 2),
 
@@ -96,16 +94,11 @@ class ScansTab extends StatelessWidget {
         if (nearbyPreviews.length > 1) ...[
           Row(
             children: [
-              const Icon(LucideIcons.radio, size: 15, color: AppTheme.cyan),
+              const Icon(PhosphorIconsRegular.broadcast, size: 15, color: AppTheme.cyan),
               const SizedBox(width: 7),
               Text(
                 'Other nearby previews',
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  letterSpacing: -0.3,
-                ),
+                style: AppTypography.sectionHud(color: AppTheme.cyan),
               ),
             ],
           ).animate().fadeIn(delay: 80.ms, duration: 300.ms),
@@ -130,12 +123,7 @@ class ScansTab extends StatelessWidget {
           children: [
             Text(
               'Recent previews',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                letterSpacing: -0.3,
-              ),
+              style: AppTypography.sectionHud(),
             ),
           ],
         ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
@@ -168,19 +156,7 @@ class ScansTab extends StatelessWidget {
             ),
           )
         else if (history.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Center(
-              child: Text(
-                'No previews yet',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
-                ),
-              ),
-            ),
-          ).animate().fadeIn(delay: 150.ms, duration: 300.ms)
+          _buildTactileEmptyState(context)
         else
           Column(
             children: history.asMap().entries.map((entry) {
@@ -193,27 +169,85 @@ class ScansTab extends StatelessWidget {
                       key: ValueKey(item.id),
                       endActionPane: ActionPane(
                         motion: const BehindMotion(),
-                        extentRatio: 0.44,
+                        extentRatio: 0.46,
                         children: [
-                          SlidableAction(
+                          CustomSlidableAction(
                             onPressed: (_) => ShareQrModal.show(
                               context,
                               url: item.url,
                               title: item.title,
                             ),
-                            backgroundColor: const Color(0xFF0284C7),
-                            foregroundColor: Colors.white,
-                            icon: LucideIcons.qr_code,
-                            label: 'Share',
-                            borderRadius: BorderRadius.circular(16),
+                            backgroundColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 3,
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0x2200E5FF),
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(
+                                  color: const Color(0x4400E5FF),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      PhosphorIconsRegular.qrCode,
+                                      color: AppTheme.cyan,
+                                      size: 17,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Share',
+                                      style: AppTypography.actionLabel(
+                                        color: AppTheme.cyan,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
-                          SlidableAction(
+                          CustomSlidableAction(
                             onPressed: (_) => onLongPressItem(item),
-                            backgroundColor: const Color(0xFF334155),
-                            foregroundColor: Colors.white,
-                            icon: LucideIcons.pencil,
-                            label: 'Rename',
-                            borderRadius: BorderRadius.circular(16),
+                            backgroundColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 3,
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0x18FFFFFF),
+                                borderRadius: BorderRadius.circular(15),
+                                border: Border.all(
+                                  color: const Color(0x28FFFFFF),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      PhosphorIconsRegular.pencilSimple,
+                                      color: Colors.white,
+                                      size: 17,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Rename',
+                                      style: AppTypography.actionLabel(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -244,7 +278,10 @@ class ScansTab extends StatelessWidget {
 
     return onRefresh != null
         ? RefreshIndicator(
-            onRefresh: onRefresh!,
+            onRefresh: () async {
+              HapticFeedback.mediumImpact();
+              await onRefresh?.call();
+            },
             color: AppTheme.cyan,
             backgroundColor: const Color(0xFF141414),
             child: list,
@@ -276,7 +313,7 @@ class ScansTab extends StatelessWidget {
                   height: 72,
                   color: AppTheme.previewSurfaceElevated,
                   child: const Icon(
-                    LucideIcons.image_off,
+                    PhosphorIconsRegular.imageBroken,
                     color: AppTheme.textMuted,
                     size: 20,
                   ),
@@ -311,7 +348,7 @@ class ScansTab extends StatelessWidget {
               onPressed: onDismissCapturedPhoto,
               tooltip: 'Remove captured photo',
               icon: const Icon(
-                LucideIcons.x,
+                PhosphorIconsRegular.x,
                 color: AppTheme.textMuted,
                 size: 18,
               ),
@@ -332,54 +369,51 @@ class ScansTab extends StatelessWidget {
               : 'https://www.google.com/s2/favicons?domain=${uri.host}&sz=128'
         : null;
 
-    return Container(
-      width: 40,
-      height: 40,
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: AppTheme.previewSurfaceElevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.previewBorder, width: 1),
-      ),
-      child: faviconUrl != null
-          ? Image.network(
-              faviconUrl,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) =>
-                  _buildPlaceholderLogo(),
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return _buildPlaceholderLogo();
-              },
-            )
-          : _buildPlaceholderLogo(),
-    );
+    if (faviconUrl != null) {
+      return Image.network(
+        faviconUrl,
+        fit: BoxFit.contain,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (frame == null) {
+            return _buildPlaceholderLogo();
+          }
+          return Container(
+            width: 40,
+            height: 40,
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: AppTheme.previewSurfaceElevated,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.previewBorder, width: 1),
+            ),
+            child: child,
+          );
+        },
+        errorBuilder: (context, error, stackTrace) => _buildPlaceholderLogo(),
+      );
+    }
+
+    return _buildPlaceholderLogo();
   }
 
   Widget _buildPlaceholderLogo() {
-    return Image.asset(
-      'assets/previewport-logo-transparent.png',
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.high,
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Center(
+        child: Image.asset(
+          'assets/previewport-logo-transparent.png',
+          width: 32,
+          height: 32,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
     );
   }
 
   Widget _buildNearbyLogo() {
-    return Container(
-      width: 40,
-      height: 40,
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-        color: AppTheme.cyan.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.cyan.withValues(alpha: 0.35)),
-      ),
-      child: Image.asset(
-        'assets/previewport-logo-transparent.png',
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-      ),
-    );
+    return _buildPlaceholderLogo();
   }
 
   Widget _buildShowcaseRow({
@@ -412,22 +446,14 @@ class ScansTab extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: -0.2,
-                    ),
+                    style: AppTypography.itemTitle(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 10.5,
-                      color: AppTheme.textSecondary,
-                    ),
+                    style: AppTypography.monoData(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -436,7 +462,7 @@ class ScansTab extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Icon(
-              LucideIcons.chevron_right,
+              PhosphorIconsRegular.caretRight,
               size: 18,
               color: AppTheme.textMuted,
             ),
@@ -463,5 +489,105 @@ class ScansTab extends StatelessWidget {
     final port = uri.hasPort && !defaultPort ? ':${uri.port}' : '';
     final path = uri.path.isNotEmpty && uri.path != '/' ? uri.path : '';
     return '${uri.host}$port$path';
+  }
+
+  Widget _buildTactileEmptyState(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 26),
+      decoration: BoxDecoration(
+        color: const Color(0x3814161C),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0x2E00E5FF),
+          width: 0.85,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1400E5FF),
+            blurRadius: 18,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0x1A00E5FF),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0x4000E5FF),
+                width: 0.8,
+              ),
+            ),
+            child: const Center(
+              child: Icon(
+                PhosphorIconsRegular.terminalWindow,
+                size: 20,
+                color: AppTheme.cyan,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No previews yet',
+            style: AppTypography.cardTitle(),
+          ),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              'Run pp start in your Flutter project root or scan a terminal QR code to launch your live preview.',
+              textAlign: TextAlign.center,
+              style: AppTypography.subtitle(),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Bounceable(
+            onTap: onCopyCommand,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0x1800E5FF),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0x4D00E5FF),
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    PhosphorIconsRegular.copy,
+                    size: 13,
+                    color: AppTheme.cyan,
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    'pp start',
+                    style: AppTypography.monoCommand(),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '· Copy',
+                    style: AppTypography.subtitle(
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 150.ms, duration: 320.ms).scale(
+          begin: const Offset(0.98, 0.98),
+          curve: Curves.easeOutCubic,
+        );
   }
 }

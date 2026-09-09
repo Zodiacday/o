@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../theme/app_theme.dart';
 
@@ -109,7 +109,7 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
                     tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
-                      LucideIcons.x,
+                      PhosphorIconsRegular.x,
                       size: 19,
                       color: AppTheme.textSecondary,
                     ),
@@ -138,7 +138,7 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
                       fontSize: 12,
                     ),
                     prefixIcon: const Icon(
-                      LucideIcons.link_2,
+                      PhosphorIconsRegular.link,
                       color: AppTheme.textMuted,
                       size: 17,
                     ),

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../services/network_status_service.dart';
 import '../theme/app_theme.dart';
@@ -45,13 +44,7 @@ class HeroScanCard extends StatelessWidget {
                 children: [
                   Text(
                     'Connect to a Flutter preview',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      height: 1.15,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.55,
-                    ),
+                    style: AppTypography.headline(),
                   ),
                 ],
               ),
@@ -65,7 +58,7 @@ class HeroScanCard extends StatelessWidget {
                 tooltip: 'Connection information',
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(
-                  LucideIcons.info,
+                  PhosphorIconsRegular.info,
                   size: 17,
                   color: AppTheme.textMuted,
                 ),
@@ -81,13 +74,13 @@ class HeroScanCard extends StatelessWidget {
           children: [
             _buildTextAction(
               label: 'Paste URL',
-              icon: LucideIcons.clipboard_paste,
+              icon: PhosphorIconsRegular.clipboardText,
               onTap: onPasteUrl,
             ),
             _buildActionDivider(),
             _buildTextAction(
               label: 'Enter URL',
-              icon: LucideIcons.pencil,
+              icon: PhosphorIconsRegular.pencilSimple,
               onTap: onEnterUrl,
             ),
           ],
@@ -145,10 +138,8 @@ class HeroScanCard extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             'Opening scanner…',
-                            style: GoogleFonts.inter(
+                            style: AppTypography.button(
                               color: AppTheme.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -159,7 +150,7 @@ class HeroScanCard extends StatelessWidget {
                         children: [
                           PreviewBreathing(
                             child: Icon(
-                              LucideIcons.scan_qr_code,
+                              PhosphorIconsRegular.qrCode,
                               size: 30,
                               color: Colors.black.withValues(alpha: 0.82),
                             ),
@@ -167,11 +158,7 @@ class HeroScanCard extends StatelessWidget {
                           const SizedBox(height: 12),
                           Text(
                             'Tap to scan QR code',
-                            style: GoogleFonts.inter(
-                              color: Colors.black,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: AppTypography.button(color: Colors.black),
                           ),
                         ],
                       ),
@@ -212,11 +199,7 @@ class HeroScanCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: AppTypography.button(color: AppTheme.textPrimary),
                 ),
               ],
             ),
@@ -246,24 +229,20 @@ class HeroScanCard extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: 'Run ',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: AppTheme.textMuted,
-                    ),
+                    style: AppTypography.subtitle(color: AppTheme.textMuted),
                   ),
                   TextSpan(
                     text: 'pp start',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                    style: AppTypography.monoCommand(
                       color: AppTheme.textSecondary,
+                      fontSize: 11.5,
                     ),
                   ),
                   const TextSpan(text: '  '),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.middle,
                     child: Icon(
-                      LucideIcons.copy,
+                      PhosphorIconsRegular.copy,
                       size: 12,
                       color: AppTheme.textMuted,
                     ),
@@ -294,20 +273,12 @@ class HeroScanCard extends StatelessWidget {
             children: [
               Text(
                 'How PreviewPort connects',
-                style: GoogleFonts.inter(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
+                style: AppTypography.modalTitle(),
               ),
               const SizedBox(height: 7),
               Text(
                 'Run this in your Flutter project root, then scan the QR code it prints.',
-                style: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  color: AppTheme.textSecondary,
-                  height: 1.4,
-                ),
+                style: AppTypography.subtitle(),
               ),
               const SizedBox(height: 12),
               Semantics(
@@ -333,7 +304,7 @@ class HeroScanCard extends StatelessWidget {
                     child: Row(
                       children: [
                         const Icon(
-                          LucideIcons.terminal,
+                          PhosphorIconsRegular.terminalWindow,
                           size: 15,
                           color: AppTheme.cyan,
                         ),
@@ -341,15 +312,11 @@ class HeroScanCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'pp start',
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
+                            style: AppTypography.monoCommand(color: AppTheme.textPrimary),
                           ),
                         ),
                         const Icon(
-                          LucideIcons.copy,
+                          PhosphorIconsRegular.copy,
                           size: 14,
                           color: AppTheme.textMuted,
                         ),

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
-import 'package:toastification/toastification.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/app_toast.dart';
 
 class LicensePackageInfo {
   final String name;
@@ -94,18 +94,24 @@ are permitted provided that the following conditions are met:
       with the distribution.''',
   ),
   LicensePackageInfo(
-    name: 'flutter_lucide',
-    version: '^1.1.0',
-    licenseType: 'ISC / MIT',
-    description: 'Precision vector iconography system based on Lucide Icons.',
-    author: 'Lucide Project & Flutter Contributors',
-    fullLicense: '''ISC License
+    name: 'phosphoricons_flutter',
+    version: '^1.0.0',
+    licenseType: 'MIT',
+    description: 'Flexible icon family for Flutter based on Phosphor Icons.',
+    author: 'Phosphor Icons & Flutter Contributors',
+    fullLicense: '''MIT License
 
-Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT). All other marks for Lucide are held by Lucide Contributors 2022-2024.
+Copyright (c) 2020 Phosphor Icons
 
-Permission to use, copy, modify, and/or distribute this software for any purpose
-with or without fee is hereby granted, provided that the above copyright notice
-and this permission notice appear in all copies.''',
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.''',
   ),
   LicensePackageInfo(
     name: 'google_fonts',
@@ -303,7 +309,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
                       child: const Padding(
                         padding: EdgeInsets.all(4),
                         child: Icon(
-                          LucideIcons.arrow_left,
+                          PhosphorIconsRegular.arrowLeft,
                           color: AppTheme.textPrimary,
                           size: 21,
                         ),
@@ -356,7 +362,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
                 child: Row(
                   children: [
                     const Icon(
-                      LucideIcons.search,
+                      PhosphorIconsRegular.magnifyingGlass,
                       color: AppTheme.textMuted,
                       size: 16,
                     ),
@@ -390,7 +396,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
                           child: const Padding(
                             padding: EdgeInsets.only(left: 8, bottom: 8),
                             child: Icon(
-                              LucideIcons.x,
+                              PhosphorIconsRegular.x,
                               color: AppTheme.textSecondary,
                               size: 15,
                             ),
@@ -506,7 +512,7 @@ class _LicensesScreenState extends State<LicensesScreen> {
                   ),
                   const SizedBox(height: 25),
                   const Icon(
-                    LucideIcons.chevron_right,
+                    PhosphorIconsRegular.caretRight,
                     size: 16,
                     color: AppTheme.textMuted,
                   ),
@@ -580,22 +586,14 @@ class _LicensesScreenState extends State<LicensesScreen> {
                           Clipboard.setData(
                             ClipboardData(text: pkg.fullLicense),
                           );
-                          HapticFeedback.lightImpact();
-                          toastification.show(
-                            context: context,
-                            type: ToastificationType.success,
-                            style: ToastificationStyle.flat,
-                            title: Text('Copied ${pkg.name} license'),
-                            alignment: Alignment.topCenter,
-                            autoCloseDuration: const Duration(seconds: 2),
-                            primaryColor: AppTheme.cyan,
-                            backgroundColor: AppTheme.surface,
-                            foregroundColor: AppTheme.textPrimary,
+                          AppToast.success(
+                            context,
+                            title: 'Copied ${pkg.name} license',
                           );
                         },
                         tooltip: 'Copy license text',
                         icon: const Icon(
-                          LucideIcons.copy,
+                          PhosphorIconsRegular.copy,
                           size: 17,
                           color: AppTheme.textSecondary,
                         ),

@@ -1,5 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:previewport/models/session_item.dart';
 import 'package:previewport/models/preview_connection.dart';
 import 'package:previewport/services/network_status_service.dart';
@@ -7,6 +8,7 @@ import 'package:previewport/theme/app_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
 
   test('SessionItem serializes and deserializes correctly', () {
     final item = SessionItem(

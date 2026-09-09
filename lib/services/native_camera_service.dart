@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -10,6 +10,7 @@ import 'package:toastification/toastification.dart';
 import '../models/camera_capture_result.dart';
 import '../models/preview_connection.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_toast.dart';
 import '../widgets/camera_scanner_modal.dart';
 import '../widgets/manual_url_modal.dart';
 
@@ -174,7 +175,7 @@ class NativeCameraService {
                     tooltip: 'Close',
                     onPressed: () => Navigator.of(ctx).pop(),
                     icon: const Icon(
-                      LucideIcons.x,
+                      PhosphorIconsRegular.x,
                       size: 19,
                       color: AppTheme.textSecondary,
                     ),
@@ -183,7 +184,7 @@ class NativeCameraService {
               ),
               const SizedBox(height: 24),
               _buildWebConnectionAction(
-                icon: LucideIcons.clipboard,
+                icon: PhosphorIconsRegular.clipboardText,
                 title: 'Paste from clipboard',
                 subtitle: 'Use a URL already copied from your terminal.',
                 onTap: () async {
@@ -209,7 +210,7 @@ class NativeCameraService {
               ),
               const Divider(height: 1, color: Color(0xFF141A26)),
               _buildWebConnectionAction(
-                icon: LucideIcons.keyboard,
+                icon: PhosphorIconsRegular.keyboard,
                 title: 'Enter URL',
                 subtitle: 'Type the preview address manually.',
                 onTap: () {
@@ -275,7 +276,7 @@ class NativeCameraService {
               ),
             ),
             const Icon(
-              LucideIcons.chevron_right,
+              PhosphorIconsRegular.caretRight,
               size: 16,
               color: AppTheme.textMuted,
             ),
@@ -291,21 +292,12 @@ class NativeCameraService {
     String description, {
     required ToastificationType type,
   }) {
-    toastification.show(
-      context: context,
-      type: type,
-      style: ToastificationStyle.flat,
-      title: Text(title),
-      description: Text(description),
-      alignment: Alignment.topCenter,
-      autoCloseDuration: const Duration(seconds: 3),
-      primaryColor: type == ToastificationType.success
-          ? const Color(0xFF00E5FF)
-          : (type == ToastificationType.error
-                ? const Color(0xFFEF4444)
-                : const Color(0xFFFFD60A)),
-      backgroundColor: const Color(0xFF000000),
-      foregroundColor: Colors.white,
-    );
+    if (type == ToastificationType.success) {
+      AppToast.success(context, title: title, description: description);
+    } else if (type == ToastificationType.error) {
+      AppToast.error(context, title: title, description: description);
+    } else {
+      AppToast.warning(context, title: title, description: description);
+    }
   }
 }

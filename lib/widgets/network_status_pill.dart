@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/network_status_service.dart';
@@ -52,27 +52,27 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
         title: 'Same Wi-Fi usually works best',
         description:
             'For local previews, keep your phone and development computer on the same Wi-Fi network.',
-        icon: LucideIcons.wifi,
+        icon: PhosphorIconsRegular.wifiHigh,
         color: AppTheme.cyan,
       ),
       NetworkState.cellularHotspot => (
         title: 'Cellular connection',
         description:
             'A local preview works through a phone hotspot or a URL that is reachable over the internet.',
-        icon: LucideIcons.signal,
+        icon: PhosphorIconsRegular.cellSignalFull,
         color: AppTheme.warning,
       ),
       NetworkState.offline => (
         title: 'Offline',
         description:
             'Connect to Wi-Fi or cellular data before opening a preview.',
-        icon: LucideIcons.wifi_off,
+        icon: PhosphorIconsRegular.wifiSlash,
         color: AppTheme.danger,
       ),
       NetworkState.unknown => (
         title: 'Checking network',
         description: 'PreviewPort is checking the device connection.',
-        icon: LucideIcons.loader,
+        icon: PhosphorIconsRegular.spinnerGap,
         color: AppTheme.textSecondary,
       ),
     };
@@ -122,7 +122,7 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
                     tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
-                      LucideIcons.x,
+                      PhosphorIconsRegular.x,
                       size: 19,
                       color: AppTheme.textSecondary,
                     ),
@@ -210,7 +210,7 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
               ),
               const SizedBox(width: 5),
               Icon(
-                LucideIcons.info,
+                PhosphorIconsRegular.info,
                 size: 12,
                 color: details.color.withValues(alpha: 0.75),
               ),

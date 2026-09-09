@@ -137,9 +137,9 @@ Write-Host "Generated $($iosIcons.Count) iOS AppIcon assets."
 
 # 5. Generate iOS LaunchImage targets
 $launchImgDir = Join-Path $projectRoot "ios\Runner\Assets.xcassets\LaunchImage.imageset"
-Generate-IconAsset -Size 300 -OutputPath (Join-Path $launchImgDir "LaunchImage.png") -ContentRatio 0.50 -SolidDark $true
-Generate-IconAsset -Size 600 -OutputPath (Join-Path $launchImgDir "LaunchImage@2x.png") -ContentRatio 0.50 -SolidDark $true
-Generate-IconAsset -Size 900 -OutputPath (Join-Path $launchImgDir "LaunchImage@3x.png") -ContentRatio 0.50 -SolidDark $true
+Generate-IconAsset -Size 300 -OutputPath (Join-Path $launchImgDir "LaunchImage.png") -ContentRatio 0.50 -SolidDark $false
+Generate-IconAsset -Size 600 -OutputPath (Join-Path $launchImgDir "LaunchImage@2x.png") -ContentRatio 0.50 -SolidDark $false
+Generate-IconAsset -Size 900 -OutputPath (Join-Path $launchImgDir "LaunchImage@3x.png") -ContentRatio 0.50 -SolidDark $false
 Write-Host "Generated iOS LaunchImage assets."
 
 # 6. Generate Android Launcher Icons

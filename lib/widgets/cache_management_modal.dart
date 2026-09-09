@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_lucide/flutter_lucide.dart';
-import 'package:toastification/toastification.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../theme/app_theme.dart';
+import 'app_toast.dart';
 
 class CacheOption {
   final String id;
@@ -48,21 +48,21 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
       title: 'Preview assets',
       subtitle: 'Web files kept for faster reloads',
       sizeMb: 2.6,
-      icon: LucideIcons.file_code,
+      icon: PhosphorIconsRegular.fileCode,
     ),
     CacheOption(
       id: 'cookies',
       title: 'Session data',
       subtitle: 'Cookies and temporary connection state',
       sizeMb: 0.4,
-      icon: LucideIcons.cookie,
+      icon: PhosphorIconsRegular.cookie,
     ),
     CacheOption(
       id: 'storage',
       title: 'Local preferences',
       subtitle: 'Temporary values used by a preview',
       sizeMb: 0.8,
-      icon: LucideIcons.database,
+      icon: PhosphorIconsRegular.database,
     ),
   ];
 
@@ -122,27 +122,10 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
     Navigator.of(context).pop();
     widget.onCleared();
 
-    toastification.show(
-      context: context,
-      type: ToastificationType.success,
-      style: ToastificationStyle.flat,
-      title: Text(
-        'Web cache cleared',
-        style: GoogleFonts.inter(
-          fontWeight: FontWeight.w600,
-          color: AppTheme.textPrimary,
-          fontSize: 13,
-        ),
-      ),
-      description: Text(
-        'Removed ${_totalSize.toStringAsFixed(1)} MB of temporary data',
-        style: GoogleFonts.inter(color: AppTheme.textSecondary, fontSize: 11),
-      ),
-      alignment: Alignment.topCenter,
-      autoCloseDuration: const Duration(seconds: 3),
-      primaryColor: AppTheme.cyan,
-      backgroundColor: AppTheme.previewSurfaceElevated,
-      foregroundColor: AppTheme.textPrimary,
+    AppToast.success(
+      context,
+      title: 'Web cache cleared',
+      description: 'Removed ${_totalSize.toStringAsFixed(1)} MB of temporary data',
     );
   }
 
@@ -204,7 +187,7 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
                       tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(
-                        LucideIcons.x,
+                        PhosphorIconsRegular.x,
                         size: 19,
                         color: AppTheme.textSecondary,
                       ),
@@ -215,7 +198,7 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
                 Row(
                   children: [
                     const Icon(
-                      LucideIcons.hard_drive,
+                      PhosphorIconsRegular.hardDrive,
                       size: 18,
                       color: AppTheme.cyan,
                     ),
@@ -304,7 +287,7 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
                       child: Row(
                         children: [
                           const Icon(
-                            LucideIcons.trash_2,
+                            PhosphorIconsRegular.trash,
                             size: 16,
                             color: AppTheme.cyan,
                           ),
@@ -319,7 +302,7 @@ class _CacheManagementModalState extends State<CacheManagementModal> {
                           ),
                           const Spacer(),
                           const Icon(
-                            LucideIcons.chevron_right,
+                            PhosphorIconsRegular.caretRight,
                             size: 15,
                             color: AppTheme.cyan,
                           ),
