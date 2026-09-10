@@ -62,27 +62,30 @@ class ScansTab extends StatelessWidget {
       children: [
         const SizedBox(height: 2),
 
-        if (nearbyPreviews.isNotEmpty)
+        // Primary Hero: Tap to scan QR code (always present)
+        HeroScanCard(
+          onTap: onOpenScanner,
+          onPasteUrl: onPasteUrl,
+          onEnterUrl: onEnterUrl,
+          onCopyCommand: onCopyCommand,
+          isBusy: isScannerBusy,
+          networkService: networkService,
+        )
+            .animate()
+            .fadeIn(duration: 400.ms)
+            .scale(begin: const Offset(0.96, 0.96), curve: Curves.easeOutCubic),
+
+        // Live Link underneath in its own minimal button if detected
+        if (nearbyPreviews.isNotEmpty) ...[
+          const SizedBox(height: 18),
           AmbientResumeCard(
             preview: nearbyPreviews.first,
             onResume: () => onOpenNearbyPreview?.call(nearbyPreviews.first),
-            onScanQr: onOpenScanner,
           )
               .animate()
               .fadeIn(duration: 350.ms)
-              .scale(begin: const Offset(0.96, 0.96), curve: Curves.easeOutCubic)
-        else
-          HeroScanCard(
-            onTap: onOpenScanner,
-            onPasteUrl: onPasteUrl,
-            onEnterUrl: onEnterUrl,
-            onCopyCommand: onCopyCommand,
-            isBusy: isScannerBusy,
-            networkService: networkService,
-          )
-              .animate()
-              .fadeIn(duration: 400.ms)
-              .scale(begin: const Offset(0.96, 0.96), curve: Curves.easeOutCubic),
+              .slideY(begin: 0.08, curve: Curves.easeOutCubic),
+        ],
 
         const SizedBox(height: 38),
 
@@ -135,8 +138,8 @@ class ScansTab extends StatelessWidget {
           Skeletonizer(
             enabled: true,
             effect: ShimmerEffect(
-              baseColor: const Color(0xFF111111),
-              highlightColor: const Color(0x4000E5FF),
+              baseColor: const Color(0xFF000000),
+              highlightColor: const Color(0x3000E5FF),
               duration: const Duration(milliseconds: 1200),
             ),
             child: Column(
@@ -295,9 +298,9 @@ class ScansTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppTheme.previewSurface,
+          color: const Color(0xFF000000),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.previewBorder),
+          border: Border.all(color: const Color(0xFF1B2232), width: 0.9),
         ),
         child: Row(
           children: [
@@ -382,9 +385,9 @@ class ScansTab extends StatelessWidget {
             height: 40,
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: AppTheme.previewSurfaceElevated,
+              color: const Color(0xFF000000),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppTheme.previewBorder, width: 1),
+              border: Border.all(color: const Color(0xFF1B2232), width: 0.9),
             ),
             child: child,
           );
@@ -432,9 +435,9 @@ class ScansTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.previewSurface,
+          color: const Color(0xFF000000),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.previewBorder),
+          border: Border.all(color: const Color(0xFF1B2232), width: 0.9),
         ),
         child: Row(
           children: [

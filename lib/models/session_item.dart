@@ -25,6 +25,18 @@ class SessionItem {
     return '${timestamp.month}/${timestamp.day}';
   }
 
+  String get displayEndpoint {
+    try {
+      final uri = Uri.parse(url);
+      final portPart = uri.hasPort ? ':${uri.port}' : '';
+      return '${uri.host}$portPart';
+    } catch (_) {
+      return url.replaceFirst(RegExp(r'^https?:\/\/'), '');
+    }
+  }
+
+  String get displayUrl => displayEndpoint;
+
   SessionItem copyWith({
     String? id,
     String? url,

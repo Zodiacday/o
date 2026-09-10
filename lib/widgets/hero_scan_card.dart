@@ -151,7 +151,7 @@ class HeroScanCard extends StatelessWidget {
                           PreviewBreathing(
                             child: Icon(
                               PhosphorIconsRegular.qrCode,
-                              size: 30,
+                              size: 60,
                               color: Colors.black.withValues(alpha: 0.82),
                             ),
                           ),

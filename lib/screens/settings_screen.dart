@@ -7,11 +7,13 @@ import '../services/history_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_toast.dart';
 import '../widgets/cache_management_modal.dart';
-import '../widgets/history_management_modal.dart';
+import 'history_screen.dart';
 import 'licenses_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final void Function(String url, {String? title, String? controlUrl})? onLaunchApp;
+
+  const SettingsScreen({super.key, this.onLaunchApp});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -100,10 +102,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: 'Saved local preview connections',
                   trailing:
                       '$_sessionCount ${_sessionCount == 1 ? 'item' : 'items'}',
-                  onTap: () => HistoryManagementModal.show(
-                    context,
-                    onUpdated: _loadHistoryCount,
-                  ),
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => HistoryScreen(
+                          onLaunchApp: (url, {title, controlUrl}) {
+                            Navigator.of(context).pop();
+                            widget.onLaunchApp?.call(
+                              url,
+                              title: title,
+                              controlUrl: controlUrl,
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                    _loadHistoryCount();
+                  },
                 ),
                 _buildSettingRow(
                   icon: PhosphorIconsRegular.hardDrive,
@@ -176,19 +192,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 1, bottom: 10),
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
           child: Text(
             title.toUpperCase(),
             style: AppTypography.sectionHud(color: AppTheme.textMuted),
           ),
         ),
         Container(
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AppTheme.previewBorder),
-              bottom: BorderSide(color: AppTheme.previewBorder),
+          decoration: BoxDecoration(
+            color: const Color(0xFF090D15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFF1B2232),
+              width: 0.9,
             ),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Column(
             children: [
               for (var index = 0; index < children.length; index++) ...[
@@ -199,7 +218,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Divider(
                       height: 1,
                       thickness: 1,
-                      color: AppTheme.borderSubtle,
+                      color: Color(0xFF161B26),
                     ),
                   ),
               ],

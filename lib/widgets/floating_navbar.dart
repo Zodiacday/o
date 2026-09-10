@@ -32,7 +32,7 @@ class FloatingNavBar extends StatelessWidget {
 
   static const List<NavItemData> navItems = [
     NavItemData(icon: PhosphorIconsRegular.qrCode, label: 'Scanner'),
-    NavItemData(icon: PhosphorIconsRegular.clock, label: 'History'),
+    NavItemData(icon: PhosphorIconsRegular.lightning, label: 'Connect'),
     NavItemData(icon: PhosphorIconsRegular.slidersHorizontal, label: 'Settings'),
   ];
 
@@ -45,14 +45,9 @@ class FloatingNavBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.55),
+            color: Colors.black.withValues(alpha: 0.85),
             blurRadius: 30,
             offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: AppTheme.cyan.withValues(alpha: 0.08),
-            blurRadius: 22,
-            spreadRadius: -2,
           ),
         ],
       ),
@@ -63,16 +58,16 @@ class FloatingNavBar extends StatelessWidget {
           child: Container(
             height: 64,
             decoration: BoxDecoration(
-              color: AppTheme.previewSurface.withValues(alpha: 0.76),
+              color: const Color(0xFF000000),
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.13),
+                color: const Color(0xFF1B2232),
                 width: 0.85,
               ),
             ),
             child: Stack(
               children: [
-                // 1. Sliding liquid cyan pill behind the active tab
+                // 1. Sliding liquid cyan pill behind the active tab (borderless translucent wash)
                 AnimatedAlign(
                   alignment: Alignment(-1.0 + (selectedIndex * 1.0), 0.0),
                   duration: const Duration(milliseconds: 240),
@@ -86,19 +81,8 @@ class FloatingNavBar extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.cyan.withValues(alpha: 0.14),
+                        color: AppTheme.cyan.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(26),
-                        border: Border.all(
-                          color: AppTheme.cyan.withValues(alpha: 0.40),
-                          width: 0.85,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.cyan.withValues(alpha: 0.20),
-                            blurRadius: 14,
-                            spreadRadius: -1,
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -140,16 +124,6 @@ class FloatingNavBar extends StatelessWidget {
                                     color: isSelected
                                         ? AppTheme.cyan
                                         : AppTheme.textMuted,
-                                    shadows: isSelected
-                                        ? [
-                                            Shadow(
-                                              color: AppTheme.cyan.withValues(
-                                                alpha: 0.55,
-                                              ),
-                                              blurRadius: 12,
-                                            ),
-                                          ]
-                                        : null,
                                   ),
                                 ),
                                 const SizedBox(height: 3),

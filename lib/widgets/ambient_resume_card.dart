@@ -10,14 +10,14 @@ import '../theme/app_theme.dart';
 class AmbientResumeCard extends StatelessWidget {
   final NearbyPreview preview;
   final VoidCallback onResume;
-  final VoidCallback onScanQr;
+  final VoidCallback? onScanQr;
   final bool animatePulse;
 
   const AmbientResumeCard({
     super.key,
     required this.preview,
     required this.onResume,
-    required this.onScanQr,
+    this.onScanQr,
     this.animatePulse = true,
   });
 
@@ -56,7 +56,7 @@ class AmbientResumeCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Bounceable(
           scaleFactor: 0.98,
           onTap: () {
@@ -64,92 +64,83 @@ class AmbientResumeCard extends StatelessWidget {
             onResume();
           },
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF0C0C0C),
-              borderRadius: BorderRadius.circular(22),
+              color: const Color(0xFF090D16),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppTheme.cyan.withValues(alpha: 0.4),
-                width: 1.5,
+                color: AppTheme.cyan.withValues(alpha: 0.35),
+                width: 1.0,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.cyan.withValues(alpha: 0.12),
-                  blurRadius: 28,
-                  offset: const Offset(0, 8),
+                  color: AppTheme.cyan.withValues(alpha: 0.08),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppTheme.cyan.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.cyan.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: const Icon(
-                        PhosphorIconsRegular.desktop,
-                        color: AppTheme.cyan,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            preview.projectName,
-                            style: AppTypography.headline(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            '${preview.displayEndpoint} · Ready on Wi-Fi',
-                            style: AppTypography.monoData(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
+                    color: AppTheme.cyan.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    PhosphorIconsRegular.desktop,
                     color: AppTheme.cyan,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.cyan.withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        preview.projectName,
+                        style: AppTypography.itemTitle(fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${preview.displayEndpoint} · Ready on Wi-Fi',
+                        style: AppTypography.monoData(fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cyan,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
                         PhosphorIconsRegular.lightning,
                         color: Colors.black,
-                        size: 18,
+                        size: 14,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Text(
                         'Tap to Resume Preview',
-                        style: AppTypography.button(color: Colors.black),
+                        style: AppTypography.button(
+                          color: Colors.black,
+                          fontSize: 11.5,
+                        ),
                       ),
                     ],
                   ),
@@ -158,28 +149,30 @@ class AmbientResumeCard extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Center(
-          child: TextButton.icon(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              onScanQr();
-            },
-            icon: const Icon(
-              PhosphorIconsRegular.qrCode,
-              size: 14,
-              color: AppTheme.textSecondary,
-            ),
-            label: Text(
-              'Or scan a different QR code',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+        if (onScanQr != null) ...[
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                onScanQr!();
+              },
+              icon: const Icon(
+                PhosphorIconsRegular.qrCode,
+                size: 14,
                 color: AppTheme.textSecondary,
+              ),
+              label: Text(
+                'Or scan a different QR code',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.textSecondary,
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }

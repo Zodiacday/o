@@ -19,7 +19,7 @@ import '../widgets/manual_url_modal.dart';
 import '../widgets/rename_dialog.dart';
 import 'app_viewer_screen.dart';
 import 'settings_screen.dart';
-import 'tabs/history_tab.dart';
+import 'tabs/quick_connect_tab.dart';
 import 'tabs/scans_tab.dart';
 import '../theme/app_theme.dart';
 
@@ -255,16 +255,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       backgroundColor: const Color(0xFF000000),
       body: Stack(
         children: [
-          // FlutterFX AnimatedGridPattern from flutterfx/flutterfx_widgets
+          // FlutterFX AnimatedGridPattern from flutterfx/flutterfx_widgets (half opacity)
           Positioned.fill(
             child: IgnorePointer(
               child: ClipRect(
                 child: Transform.translate(
                   offset: const Offset(0, -100),
-                  child: AnimatedGridPattern(
-                    squares: _gridSquares,
-                    gridSize: 30,
-                    skewAngle: 15,
+                  child: Opacity(
+                    opacity: 0.5,
+                    child: AnimatedGridPattern(
+                      squares: _gridSquares,
+                      gridSize: 30,
+                      skewAngle: 15,
+                    ),
                   ),
                 ),
               ),
@@ -302,13 +305,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           await _restartNearbyDiscovery();
                         },
                       ),
-                      HistoryTab(
+                      QuickConnectTab(
                         history: _history,
+                        nearbyPreviews: _nearbyPreviews,
                         onLaunchApp: _launchApp,
-                        onLongPressItem: _showRenameDialog,
-                        onRefresh: _loadHistory,
+                        onOpenHistory: () => setState(() => _currentNavIndex = 2),
+                        onRefresh: () async {
+                          await _loadHistory();
+                          await _restartNearbyDiscovery();
+                        },
                       ),
-                      const SettingsScreen(),
+                      SettingsScreen(onLaunchApp: _launchApp),
                     ],
                   ),
                 ),
