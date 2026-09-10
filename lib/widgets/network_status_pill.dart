@@ -186,8 +186,19 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
       child: Bounceable(
         scaleFactor: 0.96,
         onTap: () => _showInfoSheet(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: _state == NetworkState.offline ? 10 : 8,
+            vertical: 6,
+          ),
+          decoration: _state == NetworkState.offline
+              ? BoxDecoration(
+                  color: const Color(0xFF220B0E),
+                  borderRadius: BorderRadius.circular(8),
+                  border:
+                      Border.all(color: const Color(0xFF6B1D26), width: 0.9),
+                )
+              : null,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -203,7 +214,9 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
               Text(
                 details.label,
                 style: GoogleFonts.inter(
-                  color: AppTheme.textSecondary,
+                  color: _state == NetworkState.offline
+                      ? AppTheme.danger
+                      : AppTheme.textSecondary,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                 ),

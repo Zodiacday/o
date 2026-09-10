@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/history_service.dart';
 import '../theme/app_theme.dart';
@@ -20,12 +21,15 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const String _kHostPrefKey = 'quick_connect_target_host';
   int _sessionCount = 0;
+  String _targetHost = '192.168.1.100';
 
   @override
   void initState() {
     super.initState();
     _loadHistoryCount();
+    _loadTargetHost();
   }
 
   Future<void> _loadHistoryCount() async {
@@ -33,6 +37,104 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() => _sessionCount = history.length);
     }
+  }
+
+  Future<void> _loadTargetHost() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kHostPrefKey);
+    if (saved != null && saved.isNotEmpty && mounted) {
+      setState(() => _targetHost = saved);
+    }
+  }
+
+  Future<void> _saveTargetHost(String host) async {
+    final clean = host.trim();
+    if (clean.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kHostPrefKey, clean);
+    if (mounted) {
+      setState(() => _targetHost = clean);
+      _showToast('Saved Target IP: $clean');
+    }
+  }
+
+  void _showEditHostDialog() {
+    final controller = TextEditingController(text: _targetHost);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF14171F),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppTheme.borderSubtle),
+        ),
+        title: Text(
+          'Target Workstation IP',
+          style: AppTypography.modalTitle(),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter your computer\'s local Wi-Fi or LAN IP address.',
+              style: AppTypography.subtitle(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: AppTypography.monoData(fontSize: 14, color: Colors.white),
+              cursorColor: AppTheme.cyan,
+              decoration: InputDecoration(
+                hintText: '192.168.1.100',
+                hintStyle: AppTypography.monoData(color: AppTheme.textMuted),
+                filled: true,
+                fillColor: const Color(0xFF0C101A),
+                prefixIcon: const Icon(
+                  PhosphorIconsRegular.desktop,
+                  color: AppTheme.textMuted,
+                  size: 18,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.cyan),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'Cancel',
+              style: AppTypography.button(color: AppTheme.textSecondary),
+            ),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _saveTargetHost(controller.text);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.cyan,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('Save Host'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -63,6 +165,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildSection(
               title: 'Connection',
               children: [
+                _buildSettingRow(
+                  icon: PhosphorIconsRegular.desktop,
+                  title: 'Target workstation IP',
+                  subtitle: 'LAN IP for Quick Connect & probe',
+                  trailing: _targetHost,
+                  onTap: _showEditHostDialog,
+                ),
                 _buildSettingRow(
                   icon: PhosphorIconsRegular.globe,
                   title: 'Default port & host',
