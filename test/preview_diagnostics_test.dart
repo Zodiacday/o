@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:previewport/models/preview_diagnostic.dart';
 import 'package:previewport/services/preview_diagnostics_channel.dart';
 import 'package:previewport/theme/app_theme.dart';
@@ -35,7 +36,7 @@ void main() {
     expect(diagnostic.details, contains('return count'));
   });
 
-  testWidgets('PreviewErrorSheet renders details and action callbacks', (
+  testWidgets('PreviewErrorSheet renders details and action callbacks in full mode', (
     tester,
   ) async {
     var retries = 0;
@@ -74,9 +75,63 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.tap(find.text('Copy details'));
     await tester.tap(find.text('Dismiss'));
+    await tester.pump(const Duration(milliseconds: 1300));
     expect(retries, 1);
     expect(copies, 1);
     expect(dismissals, 1);
+  });
+
+  testWidgets('PreviewErrorSheet supports compact toast and expands on tap', (
+    tester,
+  ) async {
+    var retries = 0;
+    var dismissals = 0;
+    const diagnostic = PreviewDiagnostic(
+      stage: 'hot_reload',
+      message: 'Syntax error in router',
+      file: 'lib/app_router.dart',
+      line: 55,
+      column: 12,
+      codeFrame: '> 55 │ router.go(broken);',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: Scaffold(
+          body: PreviewErrorSheet(
+            diagnostic: diagnostic,
+            onRetry: () => retries++,
+            onCopyDetails: () {},
+            onDismiss: () => dismissals++,
+            initiallyExpanded: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Initially in compact toast mode
+    expect(find.byKey(const ValueKey('compact_toast')), findsOneWidget);
+    expect(find.byKey(const ValueKey('full_logbox')), findsNothing);
+    expect(find.text('HOT RELOAD'), findsOneWidget);
+    expect(find.text('Reload'), findsOneWidget);
+
+    // Tap toast to expand to full LogBox
+    await tester.tap(find.byKey(const ValueKey('compact_toast')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const ValueKey('full_logbox')), findsOneWidget);
+    expect(find.text('Syntax error in router'), findsOneWidget);
+    expect(find.text('lib/app_router.dart:55:12'), findsOneWidget);
+
+    // Tap caret down icon to collapse back to toast
+    await tester.tap(find.byIcon(PhosphorIconsRegular.caretDown));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byKey(const ValueKey('compact_toast')), findsOneWidget);
   });
 
   test(
