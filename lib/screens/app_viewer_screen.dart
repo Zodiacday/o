@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../services/shake_detector.dart';
 import '../services/preview_diagnostics_channel.dart';
 import '../services/native_bridge.dart';
+import '../services/device_viewport_sensor.dart';
 import '../models/preview_diagnostic.dart';
 import '../widgets/preview_loading_progress.dart';
 import '../widgets/preview_error_sheet.dart';
@@ -63,6 +64,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   String _networkCondition = 'normal'; // 'normal' | '3g' | 'offline'
   MockLocationPreset _selectedLocation = defaultLocationPresets.first;
   SimulatedDeviceProfile _selectedDevice = defaultDeviceProfiles.first;
+  SimulatedDeviceProfile? _nativeDevice;
   final List<TerminalLogEntry> _terminalLogs = [];
   bool _showReloadFlash = false;
   Timer? _reloadFlashTimer;
@@ -110,6 +112,24 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _updateSystemOverlayStyle(isDark: true);
     _loadingStartedAt = DateTime.now();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final detected = DeviceViewportSensor.detect(context);
+    if (_nativeDevice == null) {
+      // First detection — set as default selected device.
+      _nativeDevice = detected;
+      if (_selectedDevice.isNative) {
+        _selectedDevice = detected;
+      }
+    } else {
+      _nativeDevice = detected;
+      if (_selectedDevice.isNative) {
+        _selectedDevice = detected;
+      }
+    }
 
     if (widget.controlUrl != null) {
       _diagnosticsChannel = PreviewDiagnosticsChannel(
@@ -232,12 +252,14 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     final String platform;
 
     if (_selectedDevice.isNative) {
-      topInset = insets.top;
-      bottomInset = insets.bottom;
+      // Use sensor-populated native profile values when available.
+      final native = _nativeDevice;
+      topInset = native?.topInset ?? insets.top;
+      bottomInset = native?.bottomInset ?? insets.bottom;
       leftInset = insets.left;
       rightInset = insets.right;
-      width = size.width;
-      height = size.height;
+      width = native?.width ?? size.width;
+      height = native?.height ?? size.height;
       platform = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
     } else {
       if (isLandscape) {
@@ -298,8 +320,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     final double right;
 
     if (_selectedDevice.isNative) {
-      top = mq.padding.top;
-      bottom = mq.padding.bottom;
+      final native = _nativeDevice;
+      top = native?.topInset ?? mq.padding.top;
+      bottom = native?.bottomInset ?? mq.padding.bottom;
       left = mq.padding.left;
       right = mq.padding.right;
     } else {
@@ -925,6 +948,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) => ViewportSwitcherSheet(
         selected: _selectedDevice,
+        nativeDevice: _nativeDevice,
         onSelect: (device) {
           Navigator.of(ctx).pop();
           setState(() => _selectedDevice = device);
