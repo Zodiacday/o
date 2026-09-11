@@ -1,7 +1,24 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:previewport/services/device_viewport_sensor.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    DeviceViewportSensor.resetCache();
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('com.previewport/device_info'),
+      null,
+    );
+    DeviceViewportSensor.resetCache();
+  });
+
   group('DeviceViewportSensor', () {
     group('classifyFormFactor', () {
       test('classifies compact devices (short side <= 360)', () {
@@ -28,62 +45,8 @@ void main() {
       });
 
       test('handles landscape orientation correctly', () {
-        // 667×375 should give same result as 375×667
         expect(DeviceViewportSensor.classifyFormFactor(667, 375), 'standard');
         expect(DeviceViewportSensor.classifyFormFactor(1133, 744), 'tablet');
-      });
-    });
-
-    group('matchDeviceName', () {
-      test('matches known iPhone models', () {
-        expect(
-          DeviceViewportSensor.matchDeviceName(375, 667, 2.0, 'ios'),
-          'iPhone SE',
-        );
-        expect(
-          DeviceViewportSensor.matchDeviceName(393, 852, 3.0, 'ios'),
-          'iPhone 14 Pro',
-        );
-        expect(
-          DeviceViewportSensor.matchDeviceName(430, 932, 3.0, 'ios'),
-          'iPhone 15 Pro Max',
-        );
-        expect(
-          DeviceViewportSensor.matchDeviceName(440, 956, 3.0, 'ios'),
-          'iPhone 16 Pro Max',
-        );
-      });
-
-      test('matches known Android models', () {
-        expect(
-          DeviceViewportSensor.matchDeviceName(412, 915, 2.625, 'android'),
-          'Pixel 7 / 8',
-        );
-        expect(
-          DeviceViewportSensor.matchDeviceName(412, 883, 3.0, 'android'),
-          'Galaxy S24 Ultra',
-        );
-      });
-
-      test('matches known iPad models', () {
-        expect(
-          DeviceViewportSensor.matchDeviceName(744, 1133, 2.0, 'ios'),
-          'iPad Mini',
-        );
-        expect(
-          DeviceViewportSensor.matchDeviceName(834, 1194, 2.0, 'ios'),
-          'iPad Pro 11″',
-        );
-      });
-
-      test('returns generic fallback for unknown dimensions', () {
-        final name = DeviceViewportSensor.matchDeviceName(500, 900, 2.5, 'android');
-        expect(name, 'Android 500×900 @2.5x');
-      });
-
-      test('returns generic fallback for unknown iOS device', () {
-        final name = DeviceViewportSensor.matchDeviceName(999, 1500, 3.0, 'ios');
-        expect(name, 'iOS 999×1500 @3.0x');
       });
     });
 
@@ -115,6 +78,195 @@ void main() {
           DeviceViewportSensor.estimateCornerRadius(3.0, true, 'android'),
           28.0,
         );
+      });
+    });
+
+    group('detectSync', () {
+      testWidgets('builds native profile from MediaQuery context', (tester) async {
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              size: Size(393, 852),
+              padding: EdgeInsets.only(top: 59, bottom: 34),
+              devicePixelRatio: 3.0,
+            ),
+            child: Builder(
+              builder: (ctx) {
+                capturedContext = ctx;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final profile = DeviceViewportSensor.detectSync(capturedContext);
+        expect(profile.id, 'native');
+        expect(profile.isNativeDevice, isTrue);
+        expect(profile.isNative, isTrue);
+        expect(profile.width, 393);
+        expect(profile.height, 852);
+        expect(profile.topInset, 59);
+        expect(profile.bottomInset, 34);
+        expect(profile.devicePixelRatio, 3.0);
+        expect(profile.formFactor, 'standard');
+      });
+    });
+
+    group('detect with platform channel', () {
+      testWidgets('reads authoritative device model name from platform channel', (tester) async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+          const MethodChannel('com.previewport/device_info'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getDeviceInfo') {
+              return {
+                'model': 'iPhone 16 Pro',
+                'identifier': 'iPhone17,3',
+                'osVersion': '18.2',
+                'platform': 'ios',
+              };
+            }
+            return null;
+          },
+        );
+
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              size: Size(402, 874),
+              padding: EdgeInsets.only(top: 59, bottom: 34),
+              devicePixelRatio: 3.0,
+            ),
+            child: Builder(
+              builder: (ctx) {
+                capturedContext = ctx;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final profile = await DeviceViewportSensor.detect(capturedContext);
+        expect(profile.name, 'iPhone 16 Pro');
+        expect(profile.isNativeDevice, isTrue);
+        expect(profile.width, 402);
+        expect(profile.height, 874);
+
+        // Subsequent call should use cache without hitting channel again
+        final cachedProfile = DeviceViewportSensor.detectSync(capturedContext);
+        expect(cachedProfile.name, 'iPhone 16 Pro');
+      });
+
+      testWidgets('reads Android device model name correctly', (tester) async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+          const MethodChannel('com.previewport/device_info'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getDeviceInfo') {
+              return {
+                'model': 'Google Pixel 9',
+                'identifier': 'google/tokay',
+                'osVersion': '15',
+                'platform': 'android',
+              };
+            }
+            return null;
+          },
+        );
+
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              size: Size(412, 915),
+              padding: EdgeInsets.only(top: 32, bottom: 16),
+              devicePixelRatio: 2.625,
+            ),
+            child: Builder(
+              builder: (ctx) {
+                capturedContext = ctx;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final profile = await DeviceViewportSensor.detect(capturedContext);
+        expect(profile.name, 'Google Pixel 9');
+      });
+
+      testWidgets('falls back gracefully when channel throws PlatformException', (tester) async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+          const MethodChannel('com.previewport/device_info'),
+          (MethodCall methodCall) async {
+            throw PlatformException(code: 'UNAVAILABLE', message: 'Not supported');
+          },
+        );
+
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(
+              size: Size(412, 915),
+              padding: EdgeInsets.zero,
+              devicePixelRatio: 2.0,
+            ),
+            child: Builder(
+              builder: (ctx) {
+                capturedContext = ctx;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final profile = await DeviceViewportSensor.detect(capturedContext);
+        expect(profile.isNativeDevice, isTrue);
+        // Falls back to generic format
+        expect(profile.name, contains('412×915'));
+      });
+
+      testWidgets('resetCache clears cached info', (tester) async {
+        int callCount = 0;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+          const MethodChannel('com.previewport/device_info'),
+          (MethodCall methodCall) async {
+            callCount++;
+            return {'model': 'Test Device $callCount'};
+          },
+        );
+
+        late BuildContext capturedContext;
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(size: Size(375, 667)),
+            child: Builder(
+              builder: (ctx) {
+                capturedContext = ctx;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        final p1 = await DeviceViewportSensor.detect(capturedContext);
+        expect(p1.name, 'Test Device 1');
+        expect(callCount, 1);
+
+        // Without reset, cache returns same
+        final p2 = await DeviceViewportSensor.detect(capturedContext);
+        expect(p2.name, 'Test Device 1');
+        expect(callCount, 1);
+
+        // After reset, channel is called again
+        DeviceViewportSensor.resetCache();
+        final p3 = await DeviceViewportSensor.detect(capturedContext);
+        expect(p3.name, 'Test Device 2');
+        expect(callCount, 2);
       });
     });
   });

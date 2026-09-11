@@ -117,19 +117,32 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final detected = DeviceViewportSensor.detect(context);
+    final syncDetected = DeviceViewportSensor.detectSync(context);
     if (_nativeDevice == null) {
       // First detection — set as default selected device.
-      _nativeDevice = detected;
+      _nativeDevice = syncDetected;
       if (_selectedDevice.isNative) {
-        _selectedDevice = detected;
+        _selectedDevice = syncDetected;
       }
     } else {
-      _nativeDevice = detected;
+      _nativeDevice = syncDetected;
       if (_selectedDevice.isNative) {
-        _selectedDevice = detected;
+        _selectedDevice = syncDetected;
       }
     }
+
+    // Authoritative model detection from native platform channel
+    DeviceViewportSensor.detect(context).then((authoritative) {
+      if (!mounted) return;
+      if (_nativeDevice?.name != authoritative.name) {
+        setState(() {
+          _nativeDevice = authoritative;
+          if (_selectedDevice.isNative) {
+            _selectedDevice = authoritative;
+          }
+        });
+      }
+    });
 
     if (widget.controlUrl != null) {
       _diagnosticsChannel = PreviewDiagnosticsChannel(
