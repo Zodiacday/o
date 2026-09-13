@@ -148,7 +148,6 @@ class _UiLabScreenState extends State<UiLabScreen> {
             },
             anchorY: anchorY,
             isRightSide: _capsuleIsRightSide,
-            title: 'PreviewPort UI Sandbox',
             isCliConnected: true,
             selectedDeviceName: _selectedDevice.name,
             selectedDeviceIcon: _selectedDevice.icon,

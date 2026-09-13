@@ -607,109 +607,55 @@ class LiquidDevMenuOverlay extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // 1. PreviewPort Header with official branding & close icon
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+                  // 1. Sleek minimal header: brand logo & subtle status dot on left, close icon on right
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                'assets/previewport-logo-transparent.png',
-                                height: 24,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'PreviewPort',
-                                style: AppTypography.displayHero(
-                                  color: Colors.white,
-                                ).copyWith(fontSize: 18, letterSpacing: -0.2),
-                              ),
-                            ],
+                          Image.asset(
+                            'assets/previewport-logo-transparent.png',
+                            height: 22,
                           ),
-                          GestureDetector(
-                            onTap: onClose,
-                            behavior: HitTestBehavior.opaque,
-                            child: Container(
-                              width: 26,
-                              height: 26,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  PhosphorIconsRegular.x,
-                                  size: 14,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title ?? 'Flutter App',
-                              style: AppTypography.subtitle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
+                          const SizedBox(width: 8),
+                          // Compact live telemetry dot
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            width: 6,
+                            height: 6,
                             decoration: BoxDecoration(
-                              color: isCliConnected
-                                  ? const Color(0x2400F2FE)
-                                  : const Color(0x18FFFFFF),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isCliConnected
-                                    ? AppTheme.cyan.withValues(alpha: 0.50)
-                                    : Colors.white24,
-                                width: 0.8,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 5,
-                                  height: 5,
-                                  decoration: BoxDecoration(
-                                    color: isCliConnected ? AppTheme.cyan : AppTheme.warning,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      if (isCliConnected)
-                                        BoxShadow(
-                                          color: AppTheme.cyan.withValues(alpha: 0.9),
-                                          blurRadius: 5,
-                                          spreadRadius: 1,
-                                        ),
-                                    ],
+                              color: isCliConnected ? AppTheme.cyan : AppTheme.warning,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                if (isCliConnected)
+                                  BoxShadow(
+                                    color: AppTheme.cyan.withValues(alpha: 0.9),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
                                   ),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  isCliConnected ? 'CLI SYNCED' : 'STANDALONE',
-                                  style: AppTypography.monoData(
-                                    color: isCliConnected ? AppTheme.cyan : Colors.white70,
-                                    fontSize: 9,
-                                  ).copyWith(fontWeight: FontWeight.w700),
-                                ),
                               ],
                             ),
                           ),
                         ],
+                      ),
+                      GestureDetector(
+                        onTap: onClose,
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.10),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              PhosphorIconsRegular.x,
+                              size: 14,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
