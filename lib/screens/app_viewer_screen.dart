@@ -58,6 +58,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   bool _isMenuOpen = false;
   bool _useSafeArea = false;
   bool _showFloatingCapsule = true;
+  double _capsuleDy = 0.65;
+  double? _capsulePixelY;
+  bool _capsuleIsRightSide = true;
   late final ShakeDetector _shakeDetector;
   PreviewDiagnosticsChannel? _diagnosticsChannel;
   Timer? _loadingCompletionTimer;
@@ -496,12 +499,19 @@ class _AppViewerScreenState extends State<AppViewerScreen>
               ),
 
             // 5. Ethereal Ghost Capsule HUD (Floating 1-tap hot reload & gestures)
-            if (_showFloatingCapsule && !_isMenuOpen)
+            if (_showFloatingCapsule)
               FloatingGhostCapsule(
                 onHotReload: _triggerRemoteReload,
                 onOpenMenu: _openMenuFromShake,
                 onOpenTerminal: _openMiniTerminal,
                 onAnnotateBug: _openBugAnnotator,
+                onPositionChanged: (dy, isRight, pixelY) {
+                  setState(() {
+                    _capsuleDy = dy;
+                    _capsuleIsRightSide = isRight;
+                    _capsulePixelY = pixelY;
+                  });
+                },
                 isCliConnected: _diagnosticsChannel?.isConnected ?? false,
               ),
 

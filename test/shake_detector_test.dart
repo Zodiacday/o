@@ -61,10 +61,11 @@ void main() {
     );
   });
 
-  test('default threshold responds to effortless wrist flick (2.0 m/s²)', () {
+  test('default threshold ignores gentle motions (2.0 m/s²) and triggers on deliberate shake (15.0 m/s²)', () {
     final recognizer = ShakeGestureRecognizer();
     final start = DateTime(2026, 1, 1);
 
+    // Gentle motion (below 11.0 m/s²) is ignored
     expect(recognizer.addSample(2.0, 0, 0, timestamp: start), isFalse);
     expect(
       recognizer.addSample(
@@ -72,6 +73,19 @@ void main() {
         0,
         0,
         timestamp: start.add(const Duration(milliseconds: 150)),
+      ),
+      isFalse,
+    );
+
+    // Deliberate shake (above 11.0 m/s² with reversal) triggers
+    final shakeStart = start.add(const Duration(milliseconds: 600));
+    expect(recognizer.addSample(15.0, 0, 0, timestamp: shakeStart), isFalse);
+    expect(
+      recognizer.addSample(
+        -15.0,
+        0,
+        0,
+        timestamp: shakeStart.add(const Duration(milliseconds: 150)),
       ),
       isTrue,
     );

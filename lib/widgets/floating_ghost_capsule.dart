@@ -10,15 +10,37 @@ part 'floating_ghost_capsule_painter.dart';
 part 'floating_ghost_capsule_sections.dart';
 
 /// An edge-docked developer control system featuring a 25% radial bezel dial
-/// and two satellite action buttons (⚡ Hot Reload and 🛠️ Dev Menu).
+/// and two satellite action buttons (🔄 Hot Reload and 🛠️ Dev Menu).
 ///
 /// Built with solid obsidian materials, single continuous luminous cyan arc line,
 /// and a physics-driven morphing animation on open and close.
 class FloatingGhostCapsule extends StatefulWidget {
+  static const double quadrantRadius = 44.0;
+  static const double quadrantHeight = 88.0;
+  static const double orbitRadius = 92.0;
+  static const double edgeClearance = 16.0;
+
+  /// Single authoritative source of truth for the vertical center coordinate of the bezel hub.
+  static double calculateCenterY({
+    required double screenH,
+    required double topInset,
+    required double bottomInset,
+    required double dy,
+  }) {
+    final topPadding = topInset + orbitRadius + edgeClearance;
+    final bottomPadding = bottomInset + orbitRadius + edgeClearance;
+    final availableH = (screenH - topPadding - bottomPadding).clamp(
+      100.0,
+      screenH,
+    );
+    return topPadding + (dy * availableH).clamp(0.0, availableH);
+  }
+
   final VoidCallback onHotReload;
   final VoidCallback onOpenMenu;
   final VoidCallback? onOpenTerminal;
   final VoidCallback? onAnnotateBug;
+  final void Function(double dy, bool isRightSide, double pixelY)? onPositionChanged;
   final bool isCliConnected;
 
   const FloatingGhostCapsule({
@@ -27,6 +49,7 @@ class FloatingGhostCapsule extends StatefulWidget {
     required this.onOpenMenu,
     this.onOpenTerminal,
     this.onAnnotateBug,
+    this.onPositionChanged,
     this.isCliConnected = true,
   });
 
@@ -39,12 +62,14 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
   static const _dyPrefKey = 'previewport_capsule_dy';
   static const _sidePrefKey = 'previewport_capsule_is_right';
 
-  // Sizing & geometry constants (refined Style 1 proportions)
-  static const double _quadrantRadius = 44.0;
-  static const double _quadrantHeight = 88.0;
+  static const double _quadrantRadius = FloatingGhostCapsule.quadrantRadius;
+  static const double _quadrantHeight = FloatingGhostCapsule.quadrantHeight;
   static const double _satelliteSize = 46.0;
   static const double _orbitRadius = 92.0;
   static const double _orbitAngleDeg = 38.0;
+
+  static const double _totalBoxW = _orbitRadius + _satelliteSize + 16.0;
+  static const double _totalBoxH = (_orbitRadius * 2) + _satelliteSize + 16.0;
 
   // Solid color palette
   static const Color _obsidianSolid = Color(0xFF0B0E17);
@@ -110,6 +135,24 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
     _loadSavedPosition();
   }
 
+  double _calculateCurrentY() {
+    final mq = MediaQuery.maybeOf(context);
+    if (mq == null) return 400.0;
+    return FloatingGhostCapsule.calculateCenterY(
+      screenH: mq.size.height,
+      topInset: mq.padding.top,
+      bottomInset: mq.padding.bottom,
+      dy: _dy,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final pixelY = _calculateCurrentY();
+    widget.onPositionChanged?.call(_dy, _isRightSide, pixelY);
+  }
+
   Future<void> _loadSavedPosition() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -120,6 +163,8 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
           if (savedDy != null) _dy = savedDy.clamp(0.0, 1.0);
           if (savedSide != null) _isRightSide = savedSide;
         });
+        final pixelY = _calculateCurrentY();
+        widget.onPositionChanged?.call(_dy, _isRightSide, pixelY);
       }
     } catch (_) {}
   }
@@ -129,6 +174,8 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
       final prefs = await SharedPreferences.getInstance();
       await prefs.setDouble(_dyPrefKey, _dy);
       await prefs.setBool(_sidePrefKey, _isRightSide);
+      final pixelY = _calculateCurrentY();
+      widget.onPositionChanged?.call(_dy, _isRightSide, pixelY);
     } catch (_) {}
   }
 
@@ -233,7 +280,7 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
 
             // Active morphing dial and satellites
             Positioned(
-              top: currentY - (_quadrantHeight / 2),
+              top: currentY - (_totalBoxH / 2),
               right: _isRightSide ? 0 : null,
               left: !_isRightSide ? 0 : null,
               child: _buildDialChassis(

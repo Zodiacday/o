@@ -9,14 +9,8 @@ extension _FloatingGhostCapsuleSections on _FloatingGhostCapsuleState {
     double topPadding,
     double availableH,
   ) {
-    const totalBoxW =
-        _FloatingGhostCapsuleState._orbitRadius +
-        _FloatingGhostCapsuleState._satelliteSize +
-        16;
-    const totalBoxH =
-        (_FloatingGhostCapsuleState._orbitRadius * 2) +
-        _FloatingGhostCapsuleState._satelliteSize +
-        16;
+    const totalBoxW = _FloatingGhostCapsuleState._totalBoxW;
+    const totalBoxH = _FloatingGhostCapsuleState._totalBoxH;
 
     return AnimatedOpacity(
       opacity: _opacity,
@@ -76,6 +70,9 @@ extension _FloatingGhostCapsuleSections on _FloatingGhostCapsuleState {
                     _isRightSide = true;
                   }
                 });
+                final updatedY =
+                    topPadding + (_dy * availableH).clamp(0.0, availableH);
+                widget.onPositionChanged?.call(_dy, _isRightSide, updatedY);
               },
               onPanEnd: (_) {
                 setState(() => _isInteracting = false);
@@ -129,11 +126,13 @@ extension _FloatingGhostCapsuleSections on _FloatingGhostCapsuleState {
         color: _FloatingGhostCapsuleState._obsidianSolid,
         borderRadius: outerRadius,
         border: Border.all(
-          color: _isReloading
-              ? AppTheme.cyan
-              : (_isExpanded
+          color: !widget.isCliConnected
+              ? AppTheme.warning
+              : (_isReloading
                     ? AppTheme.cyan
-                    : AppTheme.cyan.withValues(alpha: 0.80)),
+                    : (_isExpanded
+                          ? AppTheme.cyan
+                          : AppTheme.cyan.withValues(alpha: 0.80))),
           width: 1.2,
         ),
         boxShadow: [
@@ -143,52 +142,14 @@ extension _FloatingGhostCapsuleSections on _FloatingGhostCapsuleState {
             offset: Offset(_isRightSide ? -3 : 3, 3),
           ),
           BoxShadow(
-            color: AppTheme.cyan.withValues(
+            color: (widget.isCliConnected ? AppTheme.cyan : AppTheme.warning)
+                .withValues(
               alpha: _isExpanded || _isReloading ? 0.35 : 0.16,
             ),
             blurRadius: 12,
             spreadRadius: 0.5,
           ),
         ],
-      ),
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: _isRightSide ? 8 : 0,
-            right: !_isRightSide ? 8 : 0,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: widget.isCliConnected
-                      ? AppTheme.cyan
-                      : AppTheme.warning,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    if (widget.isCliConnected)
-                      BoxShadow(
-                        color: AppTheme.cyan.withValues(alpha: 0.8),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
-              Icon(
-                PhosphorIconsRegular.lightning,
-                size: 16,
-                color: _isReloading
-                    ? AppTheme.cyan
-                    : (_isExpanded ? Colors.white : AppTheme.cyan),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -235,7 +196,7 @@ extension _FloatingGhostCapsuleSections on _FloatingGhostCapsuleState {
             ),
           ),
 
-          // 1. Top Satellite: Hot Reload (⚡)
+          // 1. Top Satellite: Hot Reload (🔄)
           Positioned(
             left: reloadCenterX - halfSat,
             top: reloadCenterY - halfSat,
@@ -245,7 +206,7 @@ extension _FloatingGhostCapsuleSections on _FloatingGhostCapsuleState {
                 angle: -iconRotation,
                 child: _buildSatelliteButton(
                   key: const Key('capsule_satellite_reload'),
-                  icon: PhosphorIconsRegular.lightning,
+                  icon: PhosphorIconsRegular.arrowClockwise,
                   iconColor: AppTheme.cyan,
                   tooltip: 'Hot Reload',
                   onTap: _triggerReloadFromSatellite,

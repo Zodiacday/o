@@ -8,8 +8,8 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// bump or tilt as a menu command.
 class ShakeGestureRecognizer {
   /// User-accelerometer values are measured in m/s² (excluding gravity).
-  /// Calibrated to an ultra-sensitive 1.5 m/s² with a single direction change requirement
-  /// so an effortless, light flick of the wrist opens the controls instantly.
+  /// Calibrated to a deliberate 11.0 m/s² threshold with a back-and-forth direction change
+  /// so intentional shakes open the controls reliably without false positives from handling or walking.
   final double threshold;
   final Duration maxDirectionInterval;
   final Duration cooldown;
@@ -21,9 +21,9 @@ class ShakeGestureRecognizer {
   int _directionChanges = 0;
 
   ShakeGestureRecognizer({
-    this.threshold = 1.5,
-    this.maxDirectionInterval = const Duration(milliseconds: 1000),
-    this.cooldown = const Duration(milliseconds: 800),
+    this.threshold = 11.0,
+    this.maxDirectionInterval = const Duration(milliseconds: 550),
+    this.cooldown = const Duration(milliseconds: 1000),
     this.requiredDirectionChanges = 1,
   });
 
