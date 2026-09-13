@@ -230,6 +230,7 @@ class ResponsiveFluidMenuPainter extends CustomPainter {
           AppTheme.cyan.withValues(alpha: 0.20),
           Colors.transparent,
         ],
+        const [0.0, 0.40, 1.0],
       )
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.8

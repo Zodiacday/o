@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:previewport/screens/app_viewer_screen.dart';
@@ -108,5 +109,35 @@ void main() {
       );
       expect(pathBottom.getBounds().isEmpty, isFalse);
     });
+
+    test('ResponsiveFluidMenuPainter paints without throwing Shader/Gradient ArgumentErrors', () {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      const size = Size(390.0, 844.0);
+
+      final painterRight = ResponsiveFluidMenuPainter(
+        anchorY: 420.0,
+        isRightSide: true,
+      );
+      expect(() => painterRight.paint(canvas, size), returnsNormally);
+
+      final painterLeft = ResponsiveFluidMenuPainter(
+        anchorY: 420.0,
+        isRightSide: false,
+      );
+      expect(() => painterLeft.paint(canvas, size), returnsNormally);
+
+      final bodyRect = ResponsiveFluidPathBuilder.getBodyRect(
+        size: size,
+        anchorY: 420.0,
+        isRightSide: true,
+      );
+      final blobPainter = AmbientLiquidBlobsPainter(
+        progress: 0.45,
+        bodyRect: bodyRect,
+      );
+      expect(() => blobPainter.paint(canvas, size), returnsNormally);
+    });
   });
 }
+
