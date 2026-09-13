@@ -439,7 +439,7 @@ class LiquidDevMenuOverlay extends StatelessWidget {
               onClose();
             },
             child: ColoredBox(
-              color: Colors.black.withValues(alpha: 0.60),
+              color: Colors.black.withValues(alpha: 0.35),
               child: AnimatedSlide(
                 offset: isOpen
                     ? Offset.zero
@@ -480,40 +480,26 @@ class LiquidDevMenuOverlay extends StatelessWidget {
           ),
         ),
 
-        // 2. Celestial oil painting background clipped to the exact fluid shape
+        // 2. Clean translucent frosted glass clipped to the exact fluid shape
         ClipPath(
           clipper: ResponsiveFluidMenuClipper(
             anchorY: anchorY,
             isRightSide: isRightSide,
           ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Celestial textured oil painting
-              Image.asset(
-                'assets/celestial_menu_bg.jpg',
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-
-              // Deep ambient obsidian vignette overlay
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      const Color(0xD8080C14),
-                      const Color(0xB8090E1A),
-                      const Color(0xE8080C14),
-                    ],
-                  ),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Clean obsidian glass tint (translucent, no heavy wallpaper image)
+                const ColoredBox(
+                  color: Color(0x99090E17),
                 ),
-              ),
 
-              // Ambient living liquid blobs layer (BlobCursor in Flutter)
-              AmbientLiquidBlobsLayer(bodyRect: bodyRect),
-            ],
+                // Ambient living liquid blobs layer (BlobCursor in Flutter)
+                AmbientLiquidBlobsLayer(bodyRect: bodyRect),
+              ],
+            ),
           ),
         ),
 
