@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -56,8 +57,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   PreviewDiagnostic? _diagnostic;
   bool _errorDismissed = false;
   bool _isMenuOpen = false;
-  bool _useSafeArea = false;
-  bool _showFloatingCapsule = true;
+  final bool _useSafeArea = false;
+  final bool _showFloatingCapsule = true;
   double _capsuleDy = 0.65;
   double? _capsulePixelY;
   bool _capsuleIsRightSide = true;
@@ -67,8 +68,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   DateTime? _loadingStartedAt;
 
   // PreviewPort 2.0 Simulation & Log State
-  String _networkCondition = 'normal'; // 'normal' | '3g' | 'offline'
-  MockLocationPreset _selectedLocation = defaultLocationPresets.first;
+  final String _networkCondition = 'normal'; // 'normal' | '3g' | 'offline'
+  final MockLocationPreset _selectedLocation = defaultLocationPresets.first;
   SimulatedDeviceProfile _selectedDevice = defaultDeviceProfiles.first;
   SimulatedDeviceProfile? _nativeDevice;
   final List<TerminalLogEntry> _terminalLogs = [];

@@ -3,8 +3,11 @@
 part of 'app_viewer_screen.dart';
 
 /// Helper to generate the exact organic fluid path tethered to the sidebar puck.
+/// Combines a clean squircle menu body with an analytical metaball tangent bridge to the bezel hub.
 @visibleForTesting
 class ResponsiveFluidPathBuilder {
+  static const double cornerRadius = 28.0;
+
   static Path buildPath({
     required Size size,
     required double anchorY,
@@ -22,119 +25,87 @@ class ResponsiveFluidPathBuilder {
     final idealBodyTop = anchorY - (bodyH * 0.45);
     final bodyTop = idealBodyTop.clamp(minBodyTop, maxBodyTop);
     final bodyBottom = bodyTop + bodyH;
-    final bodyCenterX = (bodyLeft + bodyRight) / 2;
-    final bodyCenterY = (bodyTop + bodyBottom) / 2;
 
-    // Fluid neck connection zone on the right flank (matching 44px radius of bezel hub)
-    const hubRadius = FloatingGhostCapsule.quadrantRadius;
-    final targetNeckY = anchorY.clamp(bodyTop + 80.0, bodyBottom - 80.0);
-    const neckHalfH = 34.0;
-    final neckTop = targetNeckY - neckHalfH;
-    final neckBottom = targetNeckY + neckHalfH;
-    final hipX = bodyRight - 22.0;
-    final hipY = bodyBottom - 16.0;
-    final shoulderY = bodyTop + 24.0;
+    const hubRadius = FloatingGhostCapsule.quadrantRadius; // 44.0
+
+    // Hub vertical bounds on the screen bezel edge
+    final hubTop = anchorY - hubRadius;
+    final hubBottom = anchorY + hubRadius;
+
+    // Tether neck attachment points on bodyRight
+    // Clamped safely so the neck always stays on the right flank between the corner fillets
+    final neckTop = (anchorY - hubRadius - 12.0)
+        .clamp(bodyTop + cornerRadius + 6.0, bodyBottom - cornerRadius - 52.0);
+    final neckBottom = (anchorY + hubRadius + 12.0)
+        .clamp(neckTop + 40.0, bodyBottom - cornerRadius - 6.0);
 
     final path = Path();
+
     // 1. Start at top of the bezel hub on the screen edge
-    path.moveTo(anchorX, anchorY - hubRadius);
+    path.moveTo(anchorX, hubTop);
 
     // 2. Straight line down along the bezel edge interface
-    path.lineTo(anchorX, anchorY + hubRadius);
+    path.lineTo(anchorX, hubBottom);
 
-    // 3. Outward return flare from the bezel hub into the fluid body flank
+    // 3. Smooth concave metaball flare from hubBottom outward to bodyRight, neckBottom
     path.cubicTo(
-      anchorX - 18.0,
-      anchorY + hubRadius,
-      bodyRight + 20.0,
-      neckBottom + 12.0,
+      anchorX - (anchorX - bodyRight) * 0.45,
+      hubBottom,
+      bodyRight + (anchorX - bodyRight) * 0.08,
+      neckBottom + (hubBottom - neckBottom).abs() * 0.35,
       bodyRight,
       neckBottom,
     );
 
-    // 4. Downward monotonic sweep along right flank to bottom-right hip
-    path.cubicTo(
-      bodyRight - 1.0,
-      neckBottom + (hipY - neckBottom) * 0.38,
-      bodyRight - 5.0,
-      hipY - 12.0,
-      hipX,
-      hipY,
+    // 4. Downward along the right flank to the bottom-right rounded corner
+    path.lineTo(bodyRight, bodyBottom - cornerRadius);
+
+    // 5. Bottom-Right squircle corner
+    path.arcToPoint(
+      Offset(bodyRight - cornerRadius, bodyBottom),
+      radius: const Radius.circular(cornerRadius),
     );
 
-    // 5. Fluid organic lobes across the base
-    path.cubicTo(
-      bodyCenterX + 42.0,
-      bodyBottom + 8.0,
-      bodyCenterX + 16.0,
-      bodyBottom + 5.0,
-      bodyCenterX,
-      bodyBottom + 5.0,
-    );
-    path.cubicTo(
-      bodyCenterX - 20.0,
-      bodyBottom + 5.0,
-      bodyLeft + 42.0,
-      bodyBottom + 12.0,
-      bodyLeft + 18.0,
-      bodyBottom - 18.0,
+    // 6. Along the bottom edge
+    path.lineTo(bodyLeft + cornerRadius, bodyBottom);
+
+    // 7. Bottom-Left squircle corner
+    path.arcToPoint(
+      Offset(bodyLeft, bodyBottom - cornerRadius),
+      radius: const Radius.circular(cornerRadius),
     );
 
-    // 6. Organic waist and flank curving up the left side
-    path.cubicTo(
-      bodyLeft - 8.0,
-      bodyBottom - 50.0,
-      bodyLeft + 8.0,
-      bodyCenterY + 28.0,
-      bodyLeft + 6.0,
-      bodyCenterY,
-    );
-    path.cubicTo(
-      bodyLeft + 4.0,
-      bodyCenterY - 35.0,
-      bodyLeft - 8.0,
-      bodyTop + 65.0,
-      bodyLeft + 18.0,
-      bodyTop + 20.0,
+    // 8. Along the left flank
+    path.lineTo(bodyLeft, bodyTop + cornerRadius);
+
+    // 9. Top-Left squircle corner
+    path.arcToPoint(
+      Offset(bodyLeft + cornerRadius, bodyTop),
+      radius: const Radius.circular(cornerRadius),
     );
 
-    // 7. Sculpted fluid shoulders across the top
-    path.cubicTo(
-      bodyLeft + 42.0,
-      bodyTop - 6.0,
-      bodyCenterX - 30.0,
-      bodyTop + 2.0,
-      bodyCenterX,
-      bodyTop + 2.0,
-    );
-    path.cubicTo(
-      bodyCenterX + 35.0,
-      bodyTop + 2.0,
-      bodyRight - 36.0,
-      bodyTop - 4.0,
-      bodyRight - 14.0,
-      shoulderY,
+    // 10. Along the top edge
+    path.lineTo(bodyRight - cornerRadius, bodyTop);
+
+    // 11. Top-Right squircle corner
+    path.arcToPoint(
+      Offset(bodyRight, bodyTop + cornerRadius),
+      radius: const Radius.circular(cornerRadius),
     );
 
-    // 8. Upper flank monotonic sweep down to neckTop
-    path.cubicTo(
-      bodyRight - 2.0,
-      shoulderY + (neckTop - shoulderY) * 0.45,
-      bodyRight,
-      neckTop - 12.0,
-      bodyRight,
-      neckTop,
-    );
+    // 12. Downward along the right flank to neckTop
+    path.lineTo(bodyRight, neckTop);
 
-    // 9. Meet back at top of the bezel hub on the screen edge
+    // 13. Smooth concave metaball flare from neckTop back to hubTop on the screen edge
     path.cubicTo(
-      bodyRight + 20.0,
-      neckTop - 12.0,
-      anchorX - 18.0,
-      anchorY - hubRadius,
+      bodyRight + (anchorX - bodyRight) * 0.08,
+      neckTop - (neckTop - hubTop).abs() * 0.35,
+      anchorX - (anchorX - bodyRight) * 0.45,
+      hubTop,
       anchorX,
-      anchorY - hubRadius,
+      hubTop,
     );
+
     path.close();
 
     // Symmetrically mirror when docked on the left bezel
@@ -218,7 +189,7 @@ class _ResponsiveFluidMenuPainter extends CustomPainter {
 
     // 1. Soft atmospheric outer glow pass
     final outerGlowPaint = Paint()
-      ..color = AppTheme.cyan.withValues(alpha: 0.38)
+      ..color = AppTheme.cyan.withValues(alpha: 0.35)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6.0
       ..strokeCap = StrokeCap.round
@@ -229,7 +200,7 @@ class _ResponsiveFluidMenuPainter extends CustomPainter {
     final midGlowPaint = Paint()
       ..color = AppTheme.cyan.withValues(alpha: 0.70)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
     canvas.drawPath(path, midGlowPaint);
@@ -238,7 +209,7 @@ class _ResponsiveFluidMenuPainter extends CustomPainter {
     final linePaint = Paint()
       ..color = AppTheme.cyan.withValues(alpha: 0.95)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
+      ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
     canvas.drawPath(path, linePaint);
 
@@ -267,6 +238,137 @@ class _ResponsiveFluidMenuPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ResponsiveFluidMenuPainter oldDelegate) {
     return oldDelegate.anchorY != anchorY || oldDelegate.isRightSide != isRightSide;
+  }
+}
+
+/// Ambient floating liquid blobs layer inspired by React-Bits BlobCursor & metaball physics.
+/// Three spring-damped spectral liquid orbs float and breathe continuously behind the frosted bento cards.
+class _AmbientLiquidBlobsLayer extends StatefulWidget {
+  final Rect bodyRect;
+  const _AmbientLiquidBlobsLayer({required this.bodyRect});
+
+  @override
+  State<_AmbientLiquidBlobsLayer> createState() => _AmbientLiquidBlobsLayerState();
+}
+
+class _AmbientLiquidBlobsLayerState extends State<_AmbientLiquidBlobsLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, _) {
+        return CustomPaint(
+          size: Size.infinite,
+          painter: _AmbientLiquidBlobsPainter(
+            progress: _animController.value,
+            bodyRect: widget.bodyRect,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AmbientLiquidBlobsPainter extends CustomPainter {
+  final double progress;
+  final Rect bodyRect;
+
+  _AmbientLiquidBlobsPainter({
+    required this.progress,
+    required this.bodyRect,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress * 2 * math.pi;
+    final center = bodyRect.center;
+    final w = bodyRect.width;
+    final h = bodyRect.height;
+
+    // Node 1: Electric Cyan Lead Blob (React-Bits fast node)
+    final c1 = Offset(
+      center.dx + (w * 0.22) * math.cos(t),
+      center.dy - (h * 0.18) + (h * 0.12) * math.sin(t * 1.3),
+    );
+    final r1 = (w * 0.26).clamp(65.0, 95.0);
+    _drawGooeyBlob(
+      canvas,
+      center: c1,
+      radius: r1,
+      color: AppTheme.cyan,
+      peakAlpha: 0.32,
+    );
+
+    // Node 2: Sapphire Indigo Mid Blob (React-Bits slow node)
+    final c2 = Offset(
+      center.dx - (w * 0.20) * math.sin(t * 0.8),
+      center.dy + (h * 0.18) + (h * 0.14) * math.cos(t * 0.9),
+    );
+    final r2 = (w * 0.34).clamp(85.0, 125.0);
+    _drawGooeyBlob(
+      canvas,
+      center: c2,
+      radius: r2,
+      color: const Color(0xFF6366F1), // Sapphire Indigo
+      peakAlpha: 0.26,
+    );
+
+    // Node 3: Radiant Magenta Accent Blob (React-Bits trailing node)
+    final c3 = Offset(
+      center.dx + (w * 0.16) * math.sin(t * 1.4 + 1.2),
+      center.dy + (h * 0.04) + (h * 0.16) * math.cos(t * 1.1),
+    );
+    final r3 = (w * 0.22).clamp(50.0, 75.0);
+    _drawGooeyBlob(
+      canvas,
+      center: c3,
+      radius: r3,
+      color: const Color(0xFFD946EF), // Radiant Magenta
+      peakAlpha: 0.22,
+    );
+  }
+
+  void _drawGooeyBlob(
+    Canvas canvas, {
+    required Offset center,
+    required double radius,
+    required Color color,
+    required double peakAlpha,
+  }) {
+    final paint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          color.withValues(alpha: peakAlpha),
+          color.withValues(alpha: peakAlpha * 0.45),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AmbientLiquidBlobsPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.bodyRect != bodyRect;
   }
 }
 
@@ -414,6 +516,9 @@ extension _AppViewerMenu on _AppViewerScreenState {
                   ),
                 ),
               ),
+
+              // 3. Living ambient liquid blobs inspired by React-Bits BlobCursor
+              _AmbientLiquidBlobsLayer(bodyRect: bodyRect),
             ],
           ),
         ),
