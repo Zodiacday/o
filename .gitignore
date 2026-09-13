@@ -4,6 +4,7 @@
 *.cer
 *.p12
 *.mobileprovision
+/android/key.properties
 
 # Miscellaneous
 *.class

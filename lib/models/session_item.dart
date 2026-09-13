@@ -61,7 +61,6 @@ class SessionItem {
     'title': title,
     'timestamp': timestamp.toIso8601String(),
     'isFavorite': isFavorite,
-    if (controlUrl != null) 'controlUrl': controlUrl,
   };
 
   factory SessionItem.fromJson(Map<String, dynamic> json) => SessionItem(
@@ -71,7 +70,9 @@ class SessionItem {
     timestamp:
         DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
     isFavorite: json['isFavorite'] as bool? ?? false,
-    controlUrl: json['controlUrl'] as String?,
+    // Control URLs contain short-lived bearer tokens and must never be restored
+    // from persistent history. Older records are sanitized during migration.
+    controlUrl: null,
   );
 }
 

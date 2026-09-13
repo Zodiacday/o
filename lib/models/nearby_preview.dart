@@ -57,15 +57,21 @@ class NearbyPreview {
   }
 
   static NearbyPreview? fromUdpJson(Map<String, dynamic> data) {
-    if (data['app'] != 'previewport' || data['v'] != previewportDiscoveryVersion) {
+    if (data['app'] != 'previewport' ||
+        data['v'] != previewportDiscoveryVersion) {
       return null;
     }
     final name = data['name'] as String?;
     final host = data['ip'] as String?;
     final port = data['port'] as int?;
     final sid = data['sid'] as String?;
-    final ctrl = data['ctrl'] as String?;
-    if (name == null || host == null || port == null || sid == null) return null;
+    final ctrl = PreviewConnection.tryParseControlUrl(
+      data['ctrl'] as String?,
+      expectedHost: host,
+    );
+    if (name == null || host == null || port == null || sid == null) {
+      return null;
+    }
 
     final authority = host.contains(':') ? '[$host]' : host;
     return NearbyPreview(

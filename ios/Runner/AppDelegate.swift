@@ -19,7 +19,7 @@ import UIKit
     // ── Device Info Channel ──────────────────────────────────────────
     let channel = FlutterMethodChannel(
       name: "com.previewport/device_info",
-      binaryMessenger: engineBridge.pluginRegistry.registrar(forPlugin: "DeviceInfoChannel").messenger()
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
 
     channel.setMethodCallHandler { (call, result) in

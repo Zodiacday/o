@@ -27,6 +27,21 @@ void main() {
     expect(preview.displayEndpoint, '192.168.0.25:8082');
   });
 
+  test('rejects UDP control URLs advertised for a different host', () {
+    final preview = NearbyPreview.fromUdpJson({
+      'app': 'previewport',
+      'v': previewportDiscoveryVersion,
+      'name': 'demo',
+      'ip': '192.168.0.25',
+      'port': 8080,
+      'sid': 'session-1',
+      'ctrl': 'ws://192.168.0.99:4321/events?token=abc',
+    });
+
+    expect(preview, isNotNull);
+    expect(preview!.controlUrl, isNull);
+  });
+
   test('ignores services outside the PreviewPort protocol', () {
     final preview = NearbyPreview.fromService(
       BonsoirService(

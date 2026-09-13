@@ -27,7 +27,8 @@ void main() {
     expect(reconstructed.url, equals('http://192.168.0.25:8081'));
     expect(reconstructed.title, equals('Sink Flutter'));
     expect(reconstructed.isFavorite, isTrue);
-    expect(reconstructed.controlUrl, equals('ws://192.168.0.25:8082/events?token=abc'));
+    expect(reconstructed.controlUrl, isNull);
+    expect(json, isNot(contains('controlUrl')));
   });
 
   test('AppTheme loads dark theme correctly', () {
