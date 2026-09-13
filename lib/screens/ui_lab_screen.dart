@@ -137,6 +137,7 @@ class _UiLabScreenState extends State<UiLabScreen> {
               });
             },
             isCliConnected: true,
+            isMenuOpen: _isMenuOpen,
           ),
 
           // 4. Liquid Dev Menu Overlay Rig

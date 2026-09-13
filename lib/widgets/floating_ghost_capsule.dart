@@ -42,6 +42,7 @@ class FloatingGhostCapsule extends StatefulWidget {
   final VoidCallback? onAnnotateBug;
   final void Function(double dy, bool isRightSide, double pixelY)? onPositionChanged;
   final bool isCliConnected;
+  final bool isMenuOpen;
 
   const FloatingGhostCapsule({
     super.key,
@@ -51,6 +52,7 @@ class FloatingGhostCapsule extends StatefulWidget {
     this.onAnnotateBug,
     this.onPositionChanged,
     this.isCliConnected = true,
+    this.isMenuOpen = false,
   });
 
   @override
@@ -157,6 +159,16 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
     });
   }
 
+  @override
+  void didUpdateWidget(covariant FloatingGhostCapsule oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isMenuOpen && !widget.isMenuOpen) {
+      if (mounted && _isExpanded) {
+        _collapse();
+      }
+    }
+  }
+
   Future<void> _loadSavedPosition() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -245,11 +257,7 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
 
   void _triggerMenuFromSatellite() {
     HapticFeedback.lightImpact();
-    _collapse(
-      onCompleted: () {
-        widget.onOpenMenu();
-      },
-    );
+    widget.onOpenMenu();
   }
 
   @override

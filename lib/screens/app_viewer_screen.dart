@@ -516,6 +516,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                   });
                 },
                 isCliConnected: _diagnosticsChannel?.isConnected ?? false,
+                isMenuOpen: _isMenuOpen,
               ),
 
             // 6. Reload confirmation glow vignette

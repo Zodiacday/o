@@ -37,9 +37,15 @@ void main() {
       expect(yCenter < yBottom, isTrue);
     });
 
-    test('ResponsiveFluidPathBuilder generates smooth closed path with positive bounds on right bezel', () {
+    test('ResponsiveFluidPathBuilder generates smooth closed path connected to menu satellite circle', () {
       const size = Size(390.0, 844.0);
       const anchorY = 428.5;
+
+      final satCenter = ResponsiveFluidPathBuilder.getMenuSatelliteCenter(
+        size: size,
+        anchorY: anchorY,
+        isRightSide: true,
+      );
 
       final path = ResponsiveFluidPathBuilder.buildPath(
         size: size,
@@ -50,17 +56,17 @@ void main() {
       final bounds = path.getBounds();
       expect(bounds.width, greaterThan(250.0));
       expect(bounds.height, greaterThan(400.0));
-      // Flush connection on the right bezel edge
-      expect(bounds.right, closeTo(390.0, 0.5));
+      // Outer bound encompasses the satellite puck
+      expect(bounds.right, closeTo(satCenter.dx + ResponsiveFluidPathBuilder.satelliteRadius, 1.0));
 
-      // Path contains points inside body and neck
+      // Path contains points inside body and the satellite puck center
       final bodyRect = ResponsiveFluidPathBuilder.getBodyRect(
         size: size,
         anchorY: anchorY,
         isRightSide: true,
       );
       expect(path.contains(bodyRect.center), isTrue);
-      expect(path.contains(Offset(380.0, anchorY)), isTrue); // Inside neck near bezel
+      expect(path.contains(satCenter), isTrue); // Inside the small circle of the menu
 
       // Does not contain distant corner points
       expect(path.contains(const Offset(10.0, 10.0)), isFalse);
@@ -70,6 +76,12 @@ void main() {
       const size = Size(390.0, 844.0);
       const anchorY = 428.5;
 
+      final satCenterLeft = ResponsiveFluidPathBuilder.getMenuSatelliteCenter(
+        size: size,
+        anchorY: anchorY,
+        isRightSide: false,
+      );
+
       final pathLeft = ResponsiveFluidPathBuilder.buildPath(
         size: size,
         anchorY: anchorY,
@@ -77,8 +89,8 @@ void main() {
       );
 
       final bounds = pathLeft.getBounds();
-      // Flush connection on the left bezel edge
-      expect(bounds.left, closeTo(0.0, 0.5));
+      // Outer bound encompasses the left satellite puck
+      expect(bounds.left, closeTo(satCenterLeft.dx - ResponsiveFluidPathBuilder.satelliteRadius, 1.0));
 
       final bodyRect = ResponsiveFluidPathBuilder.getBodyRect(
         size: size,
@@ -86,7 +98,7 @@ void main() {
         isRightSide: false,
       );
       expect(pathLeft.contains(bodyRect.center), isTrue);
-      expect(pathLeft.contains(Offset(10.0, anchorY)), isTrue); // Inside neck near left bezel
+      expect(pathLeft.contains(satCenterLeft), isTrue); // Inside the small circle of the menu
       expect(pathLeft.contains(const Offset(380.0, 10.0)), isFalse);
     });
 

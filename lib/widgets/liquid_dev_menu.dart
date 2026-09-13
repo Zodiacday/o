@@ -5,63 +5,82 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import '../theme/app_theme.dart';
-import 'floating_ghost_capsule.dart';
 
 /// Helper to generate the exact organic fluid path tethered to the sidebar puck.
 /// Combines a clean squircle menu body with an analytical metaball tangent bridge to the bezel hub.
 @visibleForTesting
 class ResponsiveFluidPathBuilder {
   static const double cornerRadius = 28.0;
+  static const double orbitRadius = 92.0;
+  static const double orbitAngleDeg = 38.0;
+  static const double satelliteRadius = 23.0; // 46.0 / 2
+
+  static Offset getMenuSatelliteCenter({
+    required Size size,
+    required double anchorY,
+    required bool isRightSide,
+  }) {
+    const angleRad = orbitAngleDeg * math.pi / 180;
+    final double satX = isRightSide
+        ? size.width - (orbitRadius * math.cos(angleRad))
+        : (orbitRadius * math.cos(angleRad));
+    final double satY = anchorY + (orbitRadius * math.sin(angleRad));
+    return Offset(satX, satY);
+  }
 
   static Path buildPath({
     required Size size,
     required double anchorY,
     required bool isRightSide,
   }) {
-    final bodyW = (size.width * 0.78).clamp(280.0, 320.0);
-    final bodyH = (size.height * 0.62).clamp(440.0, 500.0);
+    const angleRad = orbitAngleDeg * math.pi / 180;
+    // Compute satellite center for right side reference
+    final satCenterX = size.width - (orbitRadius * math.cos(angleRad));
+    final satCenterY = anchorY + (orbitRadius * math.sin(angleRad));
+    const satR = satelliteRadius;
 
-    final bodyLeft = (size.width - bodyW - 42.0).clamp(16.0, size.width * 0.16);
-    final bodyRight = bodyLeft + bodyW;
-    final anchorX = size.width;
+    final bodyW = (size.width * 0.74).clamp(270.0, 310.0);
+    final bodyH = (size.height * 0.60).clamp(420.0, 480.0);
+
+    // Position menu body right edge adjacent to the satellite circle
+    final bodyRight = (satCenterX - 14.0).clamp(160.0, size.width - 70.0);
+    final bodyLeft = (bodyRight - bodyW).clamp(12.0, size.width * 0.20);
 
     final minBodyTop = 56.0;
     final maxBodyTop = size.height - bodyH - 36.0;
-    final idealBodyTop = anchorY - (bodyH * 0.45);
+    final idealBodyTop = satCenterY - (bodyH * 0.48);
     final bodyTop = idealBodyTop.clamp(minBodyTop, maxBodyTop);
     final bodyBottom = bodyTop + bodyH;
 
-    const hubRadius = FloatingGhostCapsule.quadrantRadius; // 44.0
-
-    // Hub vertical bounds on the screen bezel edge
-    final hubTop = anchorY - hubRadius;
-    final hubBottom = anchorY + hubRadius;
-
     // Tether neck attachment points on bodyRight
-    final neckTop = (anchorY - hubRadius - 12.0)
-        .clamp(bodyTop + cornerRadius + 6.0, bodyBottom - cornerRadius - 52.0);
-    final neckBottom = (anchorY + hubRadius + 12.0)
-        .clamp(neckTop + 40.0, bodyBottom - cornerRadius - 6.0);
+    final neckTop = (satCenterY - satR - 26.0)
+        .clamp(bodyTop + cornerRadius + 2.0, bodyBottom - cornerRadius - 40.0);
+    final neckBottom = (satCenterY + satR + 26.0)
+        .clamp(neckTop + 36.0, bodyBottom - cornerRadius - 2.0);
 
     final path = Path();
 
-    // 1. Start at top of the bezel hub on the screen edge
-    path.moveTo(anchorX, hubTop);
+    // 1. Start at top point of the satellite circle
+    path.moveTo(satCenterX, satCenterY - satR);
 
-    // 2. Straight line down along the bezel edge interface
-    path.lineTo(anchorX, hubBottom);
+    // 2. Outer circular arc around the satellite circle (clockwise to bottom point)
+    path.arcToPoint(
+      Offset(satCenterX, satCenterY + satR),
+      radius: const Radius.circular(satR),
+      clockwise: true,
+    );
 
-    // 3. Smooth concave metaball flare from hubBottom outward to bodyRight, neckBottom
+    // 3. Smooth concave metaball flare from satellite bottom to bodyRight, neckBottom
     path.cubicTo(
-      anchorX - (anchorX - bodyRight) * 0.45,
-      hubBottom,
-      bodyRight + (anchorX - bodyRight) * 0.08,
-      neckBottom + (hubBottom - neckBottom).abs() * 0.35,
+      satCenterX - (satCenterX - bodyRight) * 0.35,
+      satCenterY + satR + 12.0,
+      bodyRight + (satCenterX - bodyRight) * 0.15,
+      neckBottom - 8.0,
       bodyRight,
       neckBottom,
     );
 
-    // 4. Downward along the right flank to the bottom-right rounded corner
+    // 4. Downward along the right flank to bottom-right squircle corner
     path.lineTo(bodyRight, bodyBottom - cornerRadius);
 
     // 5. Bottom-Right squircle corner
@@ -100,14 +119,14 @@ class ResponsiveFluidPathBuilder {
     // 12. Downward along the right flank to neckTop
     path.lineTo(bodyRight, neckTop);
 
-    // 13. Smooth concave metaball flare from neckTop back to hubTop on the screen edge
+    // 13. Smooth concave metaball flare from neckTop to satellite top
     path.cubicTo(
-      bodyRight + (anchorX - bodyRight) * 0.08,
-      neckTop - (neckTop - hubTop).abs() * 0.35,
-      anchorX - (anchorX - bodyRight) * 0.45,
-      hubTop,
-      anchorX,
-      hubTop,
+      bodyRight + (satCenterX - bodyRight) * 0.15,
+      neckTop + 8.0,
+      satCenterX - (satCenterX - bodyRight) * 0.35,
+      satCenterY - satR - 12.0,
+      satCenterX,
+      satCenterY - satR,
     );
 
     path.close();
@@ -127,21 +146,26 @@ class ResponsiveFluidPathBuilder {
     required double anchorY,
     required bool isRightSide,
   }) {
-    final bodyW = (size.width * 0.78).clamp(280.0, 320.0);
-    final bodyH = (size.height * 0.62).clamp(440.0, 500.0);
+    const angleRad = orbitAngleDeg * math.pi / 180;
+    final satCenterX = size.width - (orbitRadius * math.cos(angleRad));
+    final satCenterY = anchorY + (orbitRadius * math.sin(angleRad));
+
+    final bodyW = (size.width * 0.74).clamp(270.0, 310.0);
+    final bodyH = (size.height * 0.60).clamp(420.0, 480.0);
+
+    final bodyRight = (satCenterX - 14.0).clamp(160.0, size.width - 70.0);
+    final bodyLeft = (bodyRight - bodyW).clamp(12.0, size.width * 0.20);
 
     final minBodyTop = 56.0;
     final maxBodyTop = size.height - bodyH - 36.0;
-    final idealBodyTop = anchorY - (bodyH * 0.45);
+    final idealBodyTop = satCenterY - (bodyH * 0.48);
     final bodyTop = idealBodyTop.clamp(minBodyTop, maxBodyTop);
 
     if (isRightSide) {
-      final bodyLeft = (size.width - bodyW - 42.0).clamp(16.0, size.width * 0.16);
       return Rect.fromLTWH(bodyLeft, bodyTop, bodyW, bodyH);
     } else {
-      final bodyRight = size.width - (size.width - bodyW - 42.0).clamp(16.0, size.width * 0.16);
-      final bodyLeft = bodyRight - bodyW;
-      return Rect.fromLTWH(bodyLeft, bodyTop, bodyW, bodyH);
+      final mirroredLeft = size.width - bodyRight;
+      return Rect.fromLTWH(mirroredLeft, bodyTop, bodyW, bodyH);
     }
   }
 }
@@ -416,9 +440,16 @@ class LiquidDevMenuOverlay extends StatelessWidget {
     final mq = MediaQuery.of(context);
     final screenH = mq.size.height;
 
-    final bloomAlignment = isRightSide
-        ? Alignment(1.0, ((anchorY / screenH) * 2.0 - 1.0).clamp(-1.0, 1.0))
-        : Alignment(-1.0, ((anchorY / screenH) * 2.0 - 1.0).clamp(-1.0, 1.0));
+    final satCenter = ResponsiveFluidPathBuilder.getMenuSatelliteCenter(
+      size: mq.size,
+      anchorY: anchorY,
+      isRightSide: isRightSide,
+    );
+
+    final bloomAlignment = Alignment(
+      ((satCenter.dx / mq.size.width) * 2.0 - 1.0).clamp(-1.0, 1.0),
+      ((satCenter.dy / screenH) * 2.0 - 1.0).clamp(-1.0, 1.0),
+    );
 
     return Positioned.fill(
       child: IgnorePointer(
@@ -467,6 +498,12 @@ class LiquidDevMenuOverlay extends StatelessWidget {
       anchorY: anchorY,
       isRightSide: isRightSide,
     );
+    final satCenter = ResponsiveFluidPathBuilder.getMenuSatelliteCenter(
+      size: size,
+      anchorY: anchorY,
+      isRightSide: isRightSide,
+    );
+    const satR = ResponsiveFluidPathBuilder.satelliteRadius;
 
     return Stack(
       fit: StackFit.expand,
@@ -503,12 +540,13 @@ class LiquidDevMenuOverlay extends StatelessWidget {
           ),
         ),
 
-        // 3. Active Foreground Docking Hub physically bonded to the fluid neck
+        // 3. Active Foreground Satellite Button physically bonded to the fluid neck
         Positioned(
-          top: anchorY - FloatingGhostCapsule.quadrantRadius,
-          right: isRightSide ? 0 : null,
-          left: !isRightSide ? 0 : null,
-          child: _buildDockingHub(),
+          left: satCenter.dx - satR,
+          top: satCenter.dy - satR,
+          width: satR * 2,
+          height: satR * 2,
+          child: _buildSatelliteMenuButton(),
         ),
 
         // 4. Interactive crisp bento content positioned inside the fluid body
@@ -530,19 +568,8 @@ class LiquidDevMenuOverlay extends StatelessWidget {
     );
   }
 
-  Widget _buildDockingHub() {
-    const hubRadius = FloatingGhostCapsule.quadrantRadius;
-    const hubHeight = FloatingGhostCapsule.quadrantHeight;
-
-    final borderRadius = isRightSide
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(hubRadius),
-            bottomLeft: Radius.circular(hubRadius),
-          )
-        : const BorderRadius.only(
-            topRight: Radius.circular(hubRadius),
-            bottomRight: Radius.circular(hubRadius),
-          );
+  Widget _buildSatelliteMenuButton() {
+    const satDiameter = ResponsiveFluidPathBuilder.satelliteRadius * 2;
 
     return GestureDetector(
       key: const Key('active_fluid_docking_hub'),
@@ -554,11 +581,11 @@ class LiquidDevMenuOverlay extends StatelessWidget {
       child: Tooltip(
         message: 'Close Dev Menu',
         child: Container(
-          width: hubRadius,
-          height: hubHeight,
+          width: satDiameter,
+          height: satDiameter,
           decoration: BoxDecoration(
+            shape: BoxShape.circle,
             color: const Color(0xFF0B0E17),
-            borderRadius: borderRadius,
             border: Border.all(
               color: AppTheme.cyan,
               width: 1.2,
@@ -567,10 +594,10 @@ class LiquidDevMenuOverlay extends StatelessWidget {
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.70),
                 blurRadius: 14,
-                offset: Offset(isRightSide ? -3 : 3, 3),
+                offset: const Offset(0, 3),
               ),
               BoxShadow(
-                color: AppTheme.cyan.withValues(alpha: 0.40),
+                color: AppTheme.cyan.withValues(alpha: 0.50),
                 blurRadius: 14,
                 spreadRadius: 1.0,
               ),
@@ -578,10 +605,8 @@ class LiquidDevMenuOverlay extends StatelessWidget {
           ),
           child: Center(
             child: Icon(
-              isRightSide
-                  ? PhosphorIconsRegular.caretRight
-                  : PhosphorIconsRegular.caretLeft,
-              size: 20,
+              PhosphorIconsRegular.slidersHorizontal,
+              size: 21,
               color: AppTheme.cyan,
               shadows: [
                 Shadow(
