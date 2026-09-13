@@ -34,6 +34,7 @@ class FloatingNavBar extends StatelessWidget {
     NavItemData(icon: PhosphorIconsRegular.qrCode, label: 'Scanner'),
     NavItemData(icon: PhosphorIconsRegular.lightning, label: 'Connect'),
     NavItemData(icon: PhosphorIconsRegular.slidersHorizontal, label: 'Settings'),
+    NavItemData(icon: PhosphorIconsRegular.flask, label: 'Lab'),
   ];
 
   @override

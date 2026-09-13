@@ -150,7 +150,11 @@ class _FloatingGhostCapsuleState extends State<FloatingGhostCapsule>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final pixelY = _calculateCurrentY();
-    widget.onPositionChanged?.call(_dy, _isRightSide, pixelY);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onPositionChanged?.call(_dy, _isRightSide, pixelY);
+      }
+    });
   }
 
   Future<void> _loadSavedPosition() async {

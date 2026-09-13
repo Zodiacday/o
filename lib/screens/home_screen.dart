@@ -19,6 +19,7 @@ import '../widgets/manual_url_modal.dart';
 import '../widgets/rename_dialog.dart';
 import 'app_viewer_screen.dart';
 import 'settings_screen.dart';
+import 'ui_lab_screen.dart';
 import 'tabs/quick_connect_tab.dart';
 import 'tabs/scans_tab.dart';
 import '../theme/app_theme.dart';
@@ -316,6 +317,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         },
                       ),
                       SettingsScreen(onLaunchApp: _launchApp),
+                      const UiLabScreen(),
                     ],
                   ),
                 ),
