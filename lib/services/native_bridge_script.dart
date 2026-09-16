@@ -6,7 +6,7 @@ const String nativeBridgeCoreScript = r'''
   if (window.__previewPortBridgeInjected) return;
   window.__previewPortBridgeInjected = true;
 
-  // 1. Ensure viewport-fit=cover so WebKit activates safe-area-inset-* for Dynamic Island & notch
+  // 1. Ensure viewport tag exists without mutating existing configs to prevent WebKit rescaling glitches
   try {
     var metaViewport = document.querySelector('meta[name="viewport"]');
     if (!metaViewport) {
@@ -14,8 +14,6 @@ const String nativeBridgeCoreScript = r'''
       metaViewport.name = 'viewport';
       metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
       if (document.head) document.head.appendChild(metaViewport);
-    } else if (!metaViewport.content.includes('viewport-fit=cover')) {
-      metaViewport.content += ', viewport-fit=cover';
     }
   } catch (e) {}
 
@@ -81,13 +79,17 @@ const String nativeBridgeCoreScript = r'''
       }));
     }
   };
-  window.PreviewPort.setStatusBarStyle = function(style) {
+  window.PreviewPort.setStatusBarStyle = function(style, color) {
     if (window.PreviewPortNativeBridge) {
       var isDark = style === 'dark' || (typeof style === 'object' && style.dark === true);
-      window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+      var payload = {
         type: 'theme',
         isDark: isDark
-      }));
+      };
+      if (typeof color === 'string') {
+        payload.color = color;
+      }
+      window.PreviewPortNativeBridge.postMessage(JSON.stringify(payload));
     }
   };
 
@@ -199,36 +201,64 @@ const String nativeBridgeCoreScript = r'''
     }
   } catch (e) {}
 
-  // 5. Automatic status bar color detection based on document background / theme-color
+  // 5. Automatic status bar and safe-area background color detection
   function detectAndSyncTheme() {
     try {
       var isDark = true;
+      var dominantColor = '';
       var metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme && metaTheme.content) {
-        var hex = metaTheme.content.trim().toLowerCase();
-        if (hex === '#fff' || hex === '#ffffff' || hex === 'white') {
-          isDark = false;
-        }
-      } else if (document.body) {
-        var bg = window.getComputedStyle(document.body).backgroundColor;
-        var match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (match) {
-          var r = parseInt(match[1], 10);
-          var g = parseInt(match[2], 10);
-          var b = parseInt(match[3], 10);
-          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          if (lum > 0.55) isDark = false;
+        dominantColor = metaTheme.content.trim();
+      } else {
+        var bodyBg = document.body ? window.getComputedStyle(document.body).backgroundColor : null;
+        var htmlBg = document.documentElement ? window.getComputedStyle(document.documentElement).backgroundColor : null;
+        if (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)' && bodyBg !== 'transparent') {
+          dominantColor = bodyBg;
+        } else if (htmlBg && htmlBg !== 'rgba(0, 0, 0, 0)' && htmlBg !== 'transparent') {
+          dominantColor = htmlBg;
         }
       }
+
+      if (dominantColor) {
+        var rgbMatch = dominantColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (rgbMatch) {
+          var r = parseInt(rgbMatch[1], 10);
+          var g = parseInt(rgbMatch[2], 10);
+          var b = parseInt(rgbMatch[3], 10);
+          var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          if (lum > 0.55) isDark = false;
+        } else if (dominantColor.startsWith('#')) {
+          var hex = dominantColor.replace('#', '');
+          if (hex.length === 3) {
+            hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+          }
+          if (hex.length === 6) {
+            var r = parseInt(hex.substring(0, 2), 16);
+            var g = parseInt(hex.substring(2, 4), 16);
+            var b = parseInt(hex.substring(4, 6), 16);
+            var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            if (lum > 0.55) isDark = false;
+          }
+        } else if (dominantColor.toLowerCase() === 'white') {
+          isDark = false;
+        }
+      }
+
       if (window.PreviewPortNativeBridge) {
-        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+        var payload = {
           type: 'theme',
           isDark: isDark
-        }));
+        };
+        if (dominantColor) {
+          payload.color = dominantColor;
+        }
+        window.PreviewPortNativeBridge.postMessage(JSON.stringify(payload));
       }
     } catch (e) {}
   }
-  setTimeout(detectAndSyncTheme, 200);
+  setTimeout(detectAndSyncTheme, 150);
+  setTimeout(detectAndSyncTheme, 600);
+  setTimeout(detectAndSyncTheme, 1600);
 
   // 6. Observe document title changes
   try {

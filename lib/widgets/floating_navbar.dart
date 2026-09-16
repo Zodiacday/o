@@ -34,7 +34,6 @@ class FloatingNavBar extends StatelessWidget {
     NavItemData(icon: PhosphorIconsRegular.qrCode, label: 'Scanner'),
     NavItemData(icon: PhosphorIconsRegular.lightning, label: 'Connect'),
     NavItemData(icon: PhosphorIconsRegular.slidersHorizontal, label: 'Settings'),
-    NavItemData(icon: PhosphorIconsRegular.flask, label: 'Lab'),
   ];
 
   @override
@@ -70,7 +69,13 @@ class FloatingNavBar extends StatelessWidget {
               children: [
                 // 1. Sliding liquid cyan pill behind the active tab (borderless translucent wash)
                 AnimatedAlign(
-                  alignment: Alignment(-1.0 + (selectedIndex * 1.0), 0.0),
+                  alignment: navItems.length <= 1
+                      ? Alignment.center
+                      : Alignment(
+                          -1.0 +
+                              (selectedIndex * (2.0 / (navItems.length - 1))),
+                          0.0,
+                        ),
                   duration: const Duration(milliseconds: 240),
                   curve: Curves.easeOutCubic,
                   child: FractionallySizedBox(

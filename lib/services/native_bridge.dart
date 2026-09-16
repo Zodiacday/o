@@ -11,12 +11,14 @@ class NativeBridgeHandler {
   final void Function(String title)? onTitleChanged;
   final void Function(NativeHapticType hapticType)? onHapticTriggered;
   final void Function(bool isDarkContent)? onThemeChanged;
+  final void Function(Color color)? onThemeColorDetected;
   final void Function(String message, String level)? onConsoleLog;
 
   const NativeBridgeHandler({
     this.onTitleChanged,
     this.onHapticTriggered,
     this.onThemeChanged,
+    this.onThemeColorDetected,
     this.onConsoleLog,
   });
 
@@ -90,7 +92,6 @@ class NativeBridgeHandler {
         styleEl.textContent = ':root { --sat: ' + ins.top + 'px; --sab: ' + ins.bottom + 'px; --sal: ' + ins.left + 'px; --sar: ' + ins.right + 'px; --safe-area-inset-top: ' + ins.top + 'px; --safe-area-inset-bottom: ' + ins.bottom + 'px; --safe-area-inset-left: ' + ins.left + 'px; --safe-area-inset-right: ' + ins.right + 'px; }';
       }
       window.dispatchEvent(new CustomEvent('previewport:insets-change', { detail: ins }));
-      window.dispatchEvent(new Event('resize'));
     } catch (e) {}
   }
 
@@ -164,6 +165,13 @@ class NativeBridgeHandler {
         if (isDark is bool) {
           onThemeChanged?.call(isDark);
         }
+        final colorStr = data['color'] as String?;
+        if (colorStr != null && colorStr.isNotEmpty) {
+          final parsed = parseCssColor(colorStr);
+          if (parsed != null && parsed.a > 0) {
+            onThemeColorDetected?.call(parsed);
+          }
+        }
       } else if (type == 'console') {
         final message = data['message'] as String?;
         final level = data['level'] as String? ?? 'info';
@@ -210,5 +218,51 @@ class NativeBridgeHandler {
         HapticFeedback.vibrate();
         break;
     }
+  }
+
+  /// Parses standard CSS color definitions (hex, rgb, rgba, white, black) into a Flutter [Color].
+  static Color? parseCssColor(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final s = raw.trim().toLowerCase();
+    if (s == 'transparent' || s == 'inherit' || s == 'initial') return null;
+    if (s == 'white') return const Color(0xFFFFFFFF);
+    if (s == 'black') return const Color(0xFF000000);
+
+    if (s.startsWith('#')) {
+      final hex = s.substring(1);
+      if (hex.length == 3) {
+        final r = hex[0];
+        final g = hex[1];
+        final b = hex[2];
+        final val = int.tryParse('FF$r$r$g$g$b$b', radix: 16);
+        if (val != null) return Color(val);
+      } else if (hex.length == 6) {
+        final val = int.tryParse('FF$hex', radix: 16);
+        if (val != null) return Color(val);
+      } else if (hex.length == 8) {
+        final r = hex.substring(0, 2);
+        final g = hex.substring(2, 4);
+        final b = hex.substring(4, 6);
+        final a = hex.substring(6, 8);
+        final val = int.tryParse('$a$r$g$b', radix: 16);
+        if (val != null) return Color(val);
+      }
+    }
+
+    final rgbRegex = RegExp(
+      r'rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)',
+    );
+    final match = rgbRegex.firstMatch(s);
+    if (match != null) {
+      final r = int.tryParse(match.group(1)!) ?? 0;
+      final g = int.tryParse(match.group(2)!) ?? 0;
+      final b = int.tryParse(match.group(3)!) ?? 0;
+      final aStr = match.group(4);
+      final double a = aStr != null ? (double.tryParse(aStr) ?? 1.0) : 1.0;
+      final alpha = (a * 255).round().clamp(0, 255);
+      return Color.fromARGB(alpha, r, g, b);
+    }
+
+    return null;
   }
 }

@@ -64,7 +64,7 @@ void main() {
     expect(find.byKey(const Key('liquid_menu_circle')), findsOneWidget);
   });
 
-  testWidgets('FloatingNavBar retains the Lab destination', (tester) async {
+  testWidgets('FloatingNavBar excludes Lab and routes standard destinations', (tester) async {
     int? selectedIndex;
     await tester.pumpWidget(
       MaterialApp(
@@ -77,9 +77,15 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('navbar-lab')));
+    expect(FloatingNavBar.navItems.length, 3);
+    expect(find.byKey(const ValueKey('navbar-lab')), findsNothing);
+    expect(find.byKey(const ValueKey('navbar-scanner')), findsOneWidget);
+    expect(find.byKey(const ValueKey('navbar-connect')), findsOneWidget);
+    expect(find.byKey(const ValueKey('navbar-settings')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('navbar-settings')));
     await tester.pump();
-    expect(selectedIndex, 3);
+    expect(selectedIndex, 2);
   });
 
   testWidgets(

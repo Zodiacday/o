@@ -1,3 +1,4 @@
+import 'dart:ui' show Color;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:previewport/services/native_bridge.dart';
 
@@ -101,17 +102,33 @@ void main() {
       expect(updatedTitle, 'My Flutter App'); // unchanged for empty
     });
 
-    test('parses theme synchronization events', () {
+    test('parses theme synchronization events and dominant colors', () {
       bool? isDarkReceived;
+      Color? colorReceived;
       final handler = NativeBridgeHandler(
         onThemeChanged: (isDark) => isDarkReceived = isDark,
+        onThemeColorDetected: (color) => colorReceived = color,
       );
 
-      handler.handleMessage('{"type":"theme","isDark":true}');
+      handler.handleMessage('{"type":"theme","isDark":true,"color":"#121212"}');
       expect(isDarkReceived, isTrue);
+      expect(colorReceived, const Color(0xFF121212));
 
-      handler.handleMessage('{"type":"theme","isDark":false}');
+      handler.handleMessage('{"type":"theme","isDark":false,"color":"rgb(255, 255, 255)"}');
       expect(isDarkReceived, isFalse);
+      expect(colorReceived, const Color(0xFFFFFFFF));
+    });
+
+    test('parseCssColor parses various CSS color notations correctly', () {
+      expect(NativeBridgeHandler.parseCssColor('#fff'), const Color(0xFFFFFFFF));
+      expect(NativeBridgeHandler.parseCssColor('#00E5FF'), const Color(0xFF00E5FF));
+      expect(NativeBridgeHandler.parseCssColor('white'), const Color(0xFFFFFFFF));
+      expect(NativeBridgeHandler.parseCssColor('black'), const Color(0xFF000000));
+      expect(NativeBridgeHandler.parseCssColor('rgb(18, 18, 18)'), const Color(0xFF121212));
+      expect(NativeBridgeHandler.parseCssColor('rgba(0, 229, 255, 1.0)'), const Color(0xFF00E5FF));
+      expect(NativeBridgeHandler.parseCssColor('transparent'), isNull);
+      expect(NativeBridgeHandler.parseCssColor(''), isNull);
+      expect(NativeBridgeHandler.parseCssColor('invalid'), isNull);
     });
 
     test('ignores malformed or unexpected payloads gracefully', () {

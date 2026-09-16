@@ -528,8 +528,8 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
     final statusColor =
         widget.isCliConnected ? AppTheme.cyan : AppTheme.warning;
     final glassColor = widget.isCliConnected
-        ? const Color(0x66082236)
-        : const Color(0x66261808);
+        ? AppTheme.cyan.withValues(alpha: 0.35)
+        : AppTheme.warning.withValues(alpha: 0.35);
     final rimLightColor = widget.isCliConnected
         ? Color.lerp(Colors.white, AppTheme.cyan, 0.40)!
         : Color.lerp(Colors.white, AppTheme.warning, 0.45)!;
@@ -636,7 +636,7 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                     !_open &&
                     !_menuOpen &&
                     _morph.value == 0)
-                ? 0.30
+                ? 0.70
                 : 1.0,
             child: LiquidGlassBlender(
               key: const Key('liquid_reservoir_blender'),
@@ -660,13 +660,33 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
               ),
               child: Stack(
                 children: [
-                  // 1. Seed lens
+                  // 1. Seed lens (painted with luminous fluid core)
                   _lens(
                     seedRect,
                     const Key('liquid_sidebar_seed_lens'),
                     shape: LiquidGlassShape.roundedRectangle(
                       cornerRadius: 50.0,
                       lightColor: rimLightColor,
+                    ),
+                    content: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(50.0),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            statusColor.withValues(alpha: 0.90),
+                            statusColor.withValues(alpha: 0.55),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withValues(alpha: 0.45),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 

@@ -56,7 +56,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   PreviewDiagnostic? _diagnostic;
   bool _errorDismissed = false;
   late final LiquidDevControlController _liquidMenuController;
-  final bool _useSafeArea = false;
+  final bool _useSafeArea = true;
+  bool _isDarkContent = true;
+  Color? _appBackgroundColor;
   final bool _showFloatingCapsule = true;
   late final ShakeDetector _shakeDetector;
   PreviewDiagnosticsChannel? _diagnosticsChannel;
@@ -95,7 +97,16 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       },
       onThemeChanged: (isDark) {
         if (mounted) {
+          setState(() => _isDarkContent = isDark);
           _updateSystemOverlayStyle(isDark: isDark);
+        }
+      },
+      onThemeColorDetected: (color) {
+        if (mounted) {
+          setState(() => _appBackgroundColor = color);
+          try {
+            _controller.setBackgroundColor(color);
+          } catch (_) {}
         }
       },
       onConsoleLog: (message, level) {
@@ -278,8 +289,10 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     if (_selectedDevice.isNative) {
       // Use sensor-populated native profile values when available.
       final native = _nativeDevice;
-      topInset = native?.topInset ?? insets.top;
-      bottomInset = native?.bottomInset ?? insets.bottom;
+      final rawTop = native?.topInset ?? insets.top;
+      final rawBottom = native?.bottomInset ?? insets.bottom;
+      topInset = _useSafeArea ? 0.0 : rawTop;
+      bottomInset = _useSafeArea ? 0.0 : rawBottom;
       leftInset = insets.left;
       rightInset = insets.right;
       width = native?.width ?? size.width;
@@ -351,8 +364,10 @@ class _AppViewerScreenState extends State<AppViewerScreen>
 
     if (_selectedDevice.isNative) {
       final native = _nativeDevice;
-      top = native?.topInset ?? mq.padding.top;
-      bottom = native?.bottomInset ?? mq.padding.bottom;
+      final rawTop = native?.topInset ?? mq.padding.top;
+      final rawBottom = native?.bottomInset ?? mq.padding.bottom;
+      top = _useSafeArea ? 0.0 : rawTop;
+      bottom = _useSafeArea ? 0.0 : rawBottom;
       left = mq.padding.left;
       right = mq.padding.right;
     } else {
@@ -537,6 +552,22 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   Widget _buildViewportContent() {
     final mq = MediaQuery.of(context);
     final isNative = _selectedDevice.isNative;
+
+    if (isNative) {
+      final effectiveBg = _appBackgroundColor ??
+          (_isDarkContent ? AppTheme.background : Colors.white);
+      final topPad = _useSafeArea ? mq.padding.top : 0.0;
+      final bottomPad = _useSafeArea ? mq.padding.bottom : 0.0;
+
+      return ColoredBox(
+        color: effectiveBg,
+        child: Padding(
+          padding: EdgeInsets.only(top: topPad, bottom: bottomPad),
+          child: WebViewWidget(controller: _controller),
+        ),
+      );
+    }
+
     final targetW = _selectedDevice.width ?? mq.size.width;
     final targetH = _selectedDevice.height ?? mq.size.height;
 
@@ -545,70 +576,67 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         final availW = constraints.maxWidth;
         final availH = constraints.maxHeight;
 
-        final horizontalPadding = isNative ? 0.0 : 32.0;
-        final verticalPadding = isNative ? 0.0 : 80.0;
+        const horizontalPadding = 32.0;
+        const verticalPadding = 80.0;
         final scaleX = (availW - horizontalPadding) / targetW;
         final scaleY = (availH - verticalPadding) / targetH;
-        final scale = isNative
-            ? 1.0
-            : (scaleX < scaleY ? scaleX : scaleY).clamp(0.2, 1.0);
+        final scale = (scaleX < scaleY ? scaleX : scaleY).clamp(0.2, 1.0);
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 320),
           curve: Curves.easeInOutCubic,
-          color: isNative ? AppTheme.background : const Color(0xFF070707),
+          color: const Color(0xFF070707),
           child: Stack(
             alignment: Alignment.center,
             children: [
               // Top device indicator badge (only shown in simulated device mode)
-              if (!isNative)
-                Positioned(
-                  top: mq.padding.top + 8,
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _openViewportSwitcher();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 5,
+              Positioned(
+                top: mq.padding.top + 8,
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _openViewportSwitcher();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.15),
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _selectedDevice.icon,
+                          size: 13,
+                          color: AppTheme.cyan,
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _selectedDevice.icon,
-                            size: 13,
-                            color: AppTheme.cyan,
+                        const SizedBox(width: 6),
+                        Text(
+                          _selectedDevice.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _selectedDevice.name,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.tune_rounded,
-                            size: 12,
-                            color: AppTheme.textSecondary,
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.tune_rounded,
+                          size: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              ),
 
               // Scaled device chassis frame with fluid morphing
               AnimatedScale(
@@ -624,36 +652,28 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(
-                      isNative ? 0 : _selectedDevice.cornerRadius,
+                      _selectedDevice.cornerRadius,
                     ),
                     border: Border.all(
-                      color: isNative
-                          ? Colors.transparent
-                          : const Color(0xFF333333),
-                      width: isNative ? 0 : 3.5,
+                      color: const Color(0xFF333333),
+                      width: 3.5,
                     ),
-                    boxShadow: isNative
-                        ? null
-                        : const [
-                            BoxShadow(
-                              color: Colors.black87,
-                              blurRadius: 36,
-                              spreadRadius: 8,
-                            ),
-                          ],
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black87,
+                        blurRadius: 36,
+                        spreadRadius: 8,
+                      ),
+                    ],
                   ),
                   child: Stack(
                     children: [
                       Positioned.fill(
-                        child: _useSafeArea && isNative
-                            ? SafeArea(
-                                child: WebViewWidget(controller: _controller),
-                              )
-                            : WebViewWidget(controller: _controller),
+                        child: WebViewWidget(controller: _controller),
                       ),
 
                       // Punch-hole camera cutout if simulated android device
-                      if (!isNative && _selectedDevice.hasNotch)
+                      if (_selectedDevice.hasNotch)
                         Positioned(
                           top: 10,
                           left: 0,
@@ -671,7 +691,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                         ),
 
                       // Bottom gesture indicator bar if simulated
-                      if (!isNative && _selectedDevice.bottomInset > 0)
+                      if (_selectedDevice.bottomInset > 0)
                         Positioned(
                           bottom: 6,
                           left: 0,
