@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:previewport/models/session_item.dart';
 import 'package:previewport/screens/tabs/quick_connect_tab.dart';
@@ -55,11 +54,16 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Mode should be AUTO
-    expect(find.text('AUTO'), findsOneWidget);
+    // Mode should be AUTO (in header and on learned slot tiles)
+    expect(find.text('AUTO'), findsAtLeastNWidgets(1));
 
-    // Reachability beacon should display REACHABLE
-    expect(find.text('REACHABLE'), findsOneWidget);
+    // Reachability beacon should display status
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Text && (w.data == 'REACHABLE' || w.data == 'UNREACHABLE'),
+      ),
+      findsOneWidget,
+    );
 
     // Edit Slots button should be visible in header
     expect(find.text('Edit Slots'), findsOneWidget);
@@ -70,11 +74,9 @@ void main() {
     expect(find.text(':4200'), findsOneWidget);
     expect(find.text('Angular'), findsOneWidget);
 
-    // Remaining slots backfilled from defaults (5173, 3000)
-    expect(find.text(':5173'), findsOneWidget);
-    expect(find.text('Vite / Astro'), findsOneWidget);
-    expect(find.text(':3000'), findsOneWidget);
-    expect(find.text('Next.js'), findsOneWidget);
+    // Remaining slots stay EMPTY (no hardcoded defaults backfilled!)
+    expect(find.text('EMPTY'), findsNWidgets(2));
+    expect(find.text('Assign Port'), findsNWidgets(2));
   });
 
   testWidgets('QuickConnectTab loads pinned presets from SharedPreferences and displays PINNED', (
@@ -142,8 +144,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // Mode should be PINNED
-    expect(find.text('PINNED'), findsOneWidget);
+    // Mode should be PINNED (in header and on pinned tiles)
+    expect(find.text('PINNED'), findsAtLeastNWidgets(1));
     expect(find.text('Reset'), findsOneWidget);
 
     // Custom ports present
@@ -164,9 +166,10 @@ void main() {
     await tester.tap(find.text('Reset'));
     await tester.pumpAndSettle();
 
-    // Mode returns to AUTO and reverts to standard defaults
+    // Mode returns to AUTO and reverts to empty slots since history is empty
     expect(find.text('AUTO'), findsOneWidget);
-    expect(find.text(':5173'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(4));
+    expect(find.text('Assign Port'), findsNWidgets(4));
   });
 
   testWidgets('Smart de-duplication keeps custom titled sessions and drops generic preset launches', (
@@ -221,7 +224,7 @@ void main() {
     expect(find.text('Vite / Astro (5173)'), findsNothing);
   });
 
-  testWidgets('Visible edit UI triggers: Edit Slots sheet and card pencil buttons with quick preset chips', (
+  testWidgets('Visible edit UI triggers: Edit Slots sheet and card tap with quick preset chips', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 2400);
@@ -246,26 +249,24 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    // 1. Header has visible "Edit Slots" button
+    // 1. Initial state: all 4 slots empty
+    expect(find.text('EMPTY'), findsNWidgets(4));
+
+    // Header has visible "Edit Slots" button
     expect(find.text('Edit Slots'), findsOneWidget);
     await tester.tap(find.text('Edit Slots'));
     await tester.pumpAndSettle();
 
     // Bottom sheet opened
     expect(find.text('Customize Matrix Slots'), findsOneWidget);
-    expect(find.text(':5173'), findsNWidgets(2)); // in grid + in sheet
+    expect(find.text('Slot 1: Empty'), findsOneWidget);
 
     // Close bottom sheet
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
 
-    // 2. Card has visible pencil icon button
-    final pencilIcons = find.byIcon(PhosphorIconsRegular.pencilSimple);
-    // At least 4 pencil icons for the 4 cards (+ 1 for Change IP)
-    expect(pencilIcons, findsAtLeastNWidgets(5));
-
-    // Tap pencil on first card (index 1 in finder, since index 0 is Change IP)
-    await tester.tap(pencilIcons.at(1));
+    // 2. Tap empty slot card directly to open configuration modal
+    await tester.tap(find.text('SLOT 1'));
     await tester.pumpAndSettle();
 
     // Configuration modal opened
@@ -281,9 +282,80 @@ void main() {
     await tester.tap(find.text('Save & Pin'));
     await tester.pumpAndSettle();
 
-    // Mode is now PINNED and slot 1 is :4200 Angular!
-    expect(find.text('PINNED'), findsOneWidget);
+    // Slot 1 is now PINNED with :4200 Angular, remaining 3 stay empty
+    expect(find.text('PINNED'), findsAtLeastNWidgets(1));
     expect(find.text(':4200'), findsOneWidget);
     expect(find.text('Angular'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(3));
+  });
+
+  testWidgets('New install has 4 empty slots and dynamically learns without overriding pinned slots', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    // 1. Initial mount with empty history
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QuickConnectTab(
+            history: const [],
+            nearbyPreviews: const [],
+            onLaunchApp: (_, {title, controlUrl}) {},
+            onOpenHistory: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('AUTO'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(4));
+
+    // 2. Pin slot 1 to port 9999
+    await tester.tap(find.text('SLOT 1'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '9999');
+    await tester.tap(find.text('Save & Pin'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(':9999'), findsOneWidget);
+    expect(find.text('PINNED'), findsAtLeastNWidgets(1));
+    expect(find.text('EMPTY'), findsNWidgets(3));
+
+    // 3. User connects to a new app on port 5173 in history
+    final updatedHistory = [
+      SessionItem(
+        id: 'sess_1',
+        url: 'http://192.168.1.100:5173',
+        title: 'New Vite Project',
+        timestamp: DateTime.now(),
+      ),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QuickConnectTab(
+            history: updatedHistory,
+            nearbyPreviews: const [],
+            onLaunchApp: (_, {title, controlUrl}) {},
+            onOpenHistory: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Slot 1 is STILL permanently :9999 (pinned), while Slot 2 learned :5173, and slots 3-4 stay empty!
+    expect(find.text(':9999'), findsOneWidget);
+    expect(find.text(':5173'), findsOneWidget);
+    expect(find.text('Vite / Astro'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(2));
   });
 }

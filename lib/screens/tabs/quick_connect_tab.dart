@@ -43,51 +43,25 @@ class QuickConnectTab extends StatefulWidget {
 class _QuickConnectTabState extends State<QuickConnectTab>
     with WidgetsBindingObserver {
   static const String _kHostPrefKey = 'quick_connect_target_host';
-  static const String _kCustomPresetsPrefKey =
-      'quick_connect_custom_presets_v1';
-
-  static const List<DevPortPreset> defaultPresets = [
-    DevPortPreset(
-      port: 5173,
-      framework: 'Vite / Astro',
-      description: 'Vue, Svelte, React',
-      icon: PhosphorIconsRegular.lightning,
-    ),
-    DevPortPreset(
-      port: 3000,
-      framework: 'Next.js',
-      description: 'React, Remix, Node',
-      icon: PhosphorIconsRegular.code,
-    ),
-    DevPortPreset(
-      port: 8080,
-      framework: 'Flutter Web',
-      description: 'PreviewPort, Spring',
-      icon: PhosphorIconsRegular.deviceMobile,
-    ),
-    DevPortPreset(
-      port: 8000,
-      framework: 'FastAPI / API',
-      description: 'Python, Flask, Rails',
-      icon: PhosphorIconsRegular.terminalWindow,
-    ),
-  ];
+  static const String _kPinnedSlotsPrefKey = 'quick_connect_pinned_slots_v2';
 
   String _targetHost = '192.168.1.100';
   String? _detectedClipboardUrl;
   bool _isProbing = false;
-  bool _isCustomPinned = false;
   bool _isHostReachable = true;
 
   final Map<int, bool> _livePorts = {};
-  late List<DevPortPreset> _presets;
+  final Map<int, DevPortPreset> _pinnedSlots = {};
+  late List<DevPortPreset?> _slots;
+
+  bool get _hasPinnedSlots => _pinnedSlots.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
-    _presets = List.from(defaultPresets);
+    _slots = List<DevPortPreset?>.filled(4, null);
     WidgetsBinding.instance.addObserver(this);
-    _initializePresets();
+    _initializeSlots();
     _initializeTargetHost();
     _checkClipboard();
   }
@@ -95,8 +69,8 @@ class _QuickConnectTabState extends State<QuickConnectTab>
   @override
   void didUpdateWidget(QuickConnectTab oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_isCustomPinned && oldWidget.history != widget.history) {
-      _computeAdaptivePresets();
+    if (oldWidget.history != widget.history) {
+      _computeSlots();
       _probeAllPorts();
     }
   }
@@ -115,32 +89,58 @@ class _QuickConnectTabState extends State<QuickConnectTab>
     }
   }
 
-  Future<void> _initializePresets() async {
+  Future<void> _initializeSlots() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kCustomPresetsPrefKey);
+    final raw = prefs.getString(_kPinnedSlotsPrefKey);
 
     if (raw != null && raw.isNotEmpty) {
       try {
-        final decoded = jsonDecode(raw) as List<dynamic>;
-        final loaded = decoded
-            .map((e) => DevPortPreset.fromJson(e as Map<String, dynamic>))
-            .toList();
-        if (loaded.length == 4) {
-          if (mounted) {
-            setState(() {
-              _presets = loaded;
-              _isCustomPinned = true;
-            });
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        _pinnedSlots.clear();
+        decoded.forEach((key, value) {
+          final idx = int.tryParse(key);
+          if (idx != null && idx >= 0 && idx < 4) {
+            _pinnedSlots[idx] = DevPortPreset.fromJson(
+              value as Map<String, dynamic>,
+            );
           }
-          return;
-        }
+        });
       } catch (_) {}
+    } else {
+      // Backwards compatibility: check v1 format if v2 is not yet initialized
+      final rawV1 = prefs.getString('quick_connect_custom_presets_v1');
+      if (rawV1 != null && rawV1.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(rawV1) as List<dynamic>;
+          _pinnedSlots.clear();
+          for (var i = 0; i < decoded.length && i < 4; i++) {
+            final p = DevPortPreset.fromJson(
+              decoded[i] as Map<String, dynamic>,
+            );
+            if (p.isCustom) {
+              _pinnedSlots[i] = p;
+            }
+          }
+        } catch (_) {}
+      }
     }
 
-    _computeAdaptivePresets();
+    _computeSlots();
   }
 
-  void _computeAdaptivePresets() {
+  void _computeSlots() {
+    final slots = List<DevPortPreset?>.filled(4, null);
+    final pinnedPorts = <int>{};
+
+    // 1. Assign permanently pinned user slots
+    for (var i = 0; i < 4; i++) {
+      if (_pinnedSlots.containsKey(i)) {
+        slots[i] = _pinnedSlots[i];
+        pinnedPorts.add(_pinnedSlots[i]!.port);
+      }
+    }
+
+    // 2. Discover and rank ports from connection history
     final portCounts = <int, int>{};
     final portLatestTime = <int, DateTime>{};
     final portFallbackTitle = <int, String>{};
@@ -150,6 +150,8 @@ class _QuickConnectTabState extends State<QuickConnectTab>
       final uri = Uri.tryParse(item.url);
       if (uri != null && uri.hasPort && uri.port > 0) {
         final port = uri.port;
+        if (pinnedPorts.contains(port)) continue; // Don't duplicate pinned ports
+
         portCounts[port] = (portCounts[port] ?? 0) + 1;
         if (!portLatestTime.containsKey(port) ||
             item.timestamp.isAfter(portLatestTime[port]!)) {
@@ -173,55 +175,62 @@ class _QuickConnectTabState extends State<QuickConnectTab>
         return portLatestTime[b]!.compareTo(portLatestTime[a]!);
       });
 
-    final List<DevPortPreset> adaptive = [];
-    for (final port in discoveredPorts.take(4)) {
-      adaptive.add(
-        DevPortPreset.fromPortAndSignature(
+    // 3. Fill available slots with auto-learned ports
+    var learnedIdx = 0;
+    for (var i = 0; i < 4; i++) {
+      if (slots[i] == null && learnedIdx < discoveredPorts.length) {
+        final port = discoveredPorts[learnedIdx++];
+        slots[i] = DevPortPreset.fromPortAndSignature(
           port,
           fallbackTitle: portFallbackTitle[port],
           isHttps: portIsHttps[port] ?? false,
           isCustom: false,
-        ),
-      );
-    }
-
-    for (final defaultPreset in defaultPresets) {
-      if (adaptive.length >= 4) break;
-      if (!adaptive.any((p) => p.port == defaultPreset.port)) {
-        adaptive.add(defaultPreset);
+        );
       }
     }
 
+    // Slots without pinned or learned ports stay null (EMPTY)
+
     if (mounted) {
       setState(() {
-        _presets = adaptive;
-        _isCustomPinned = false;
+        _slots = slots;
       });
     }
   }
 
-  Future<void> _saveCustomPresets(List<DevPortPreset> presets) async {
+  Future<void> _pinSlot(int index, DevPortPreset preset) async {
+    final updated = preset.copyWith(isCustom: true);
+    _pinnedSlots[index] = updated;
+    await _persistPinnedSlots();
+    _computeSlots();
+    _probeAllPorts();
+  }
+
+  Future<void> _unpinSlot(int index) async {
+    _pinnedSlots.remove(index);
+    await _persistPinnedSlots();
+    _computeSlots();
+    _probeAllPorts();
+  }
+
+  Future<void> _persistPinnedSlots() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonStr = jsonEncode(presets.map((p) => p.toJson()).toList());
-    await prefs.setString(_kCustomPresetsPrefKey, jsonStr);
-
-    if (mounted) {
-      setState(() {
-        _presets = presets;
-        _isCustomPinned = true;
-      });
-      _probeAllPorts();
-    }
+    final mapToSave = <String, dynamic>{};
+    _pinnedSlots.forEach((key, val) {
+      mapToSave[key.toString()] = val.toJson();
+    });
+    await prefs.setString(_kPinnedSlotsPrefKey, jsonEncode(mapToSave));
   }
 
-  Future<void> _resetToAutoAdaptive() async {
+  Future<void> _resetAllSlots() async {
     HapticFeedback.lightImpact();
+    _pinnedSlots.clear();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kCustomPresetsPrefKey);
+    await prefs.remove(_kPinnedSlotsPrefKey);
+    await prefs.remove('quick_connect_custom_presets_v1');
 
     if (mounted) {
-      setState(() => _isCustomPinned = false);
-      _computeAdaptivePresets();
+      _computeSlots();
       _probeAllPorts();
     }
   }
@@ -318,41 +327,44 @@ class _QuickConnectTabState extends State<QuickConnectTab>
     var hostContacted = false;
 
     try {
-      await Future.wait(
-        _presets.map((preset) async {
-          final scheme = preset.isHttps ? 'https' : 'http';
-          final url = Uri.parse('$scheme://$_targetHost:${preset.port}');
-          var isLive = false;
-          try {
-            final response = await client
-                .head(url)
-                .timeout(const Duration(milliseconds: 450));
-            isLive = response.statusCode > 0;
-            if (isLive) {
-              hostContacted = true;
-            }
-          } catch (e) {
-            if (e is SocketException) {
-              // TCP RST / Refused indicates host is alive on local network!
-              final msg = e.message.toLowerCase();
-              if (msg.contains('refused') ||
-                  e.osError?.errorCode == 111 ||
-                  e.osError?.errorCode == 10061) {
+      final activePresets = _slots.whereType<DevPortPreset>().toList();
+      if (activePresets.isNotEmpty) {
+        await Future.wait(
+          activePresets.map((preset) async {
+            final scheme = preset.isHttps ? 'https' : 'http';
+            final url = Uri.parse('$scheme://$_targetHost:${preset.port}');
+            var isLive = false;
+            try {
+              final response = await client
+                  .head(url)
+                  .timeout(const Duration(milliseconds: 450));
+              isLive = response.statusCode > 0;
+              if (isLive) {
                 hostContacted = true;
               }
-              isLive = false;
-            } else if (e is TimeoutException) {
-              isLive = false;
+            } catch (e) {
+              if (e is SocketException) {
+                // TCP RST / Refused indicates host is alive on local network!
+                final msg = e.message.toLowerCase();
+                if (msg.contains('refused') ||
+                    e.osError?.errorCode == 111 ||
+                    e.osError?.errorCode == 10061) {
+                  hostContacted = true;
+                }
+                isLive = false;
+              } else if (e is TimeoutException) {
+                isLive = false;
+              }
             }
-          }
 
-          if (mounted) {
-            setState(() {
-              _livePorts[preset.port] = isLive;
-            });
-          }
-        }),
-      );
+            if (mounted) {
+              setState(() {
+                _livePorts[preset.port] = isLive;
+              });
+            }
+          }),
+        );
+      }
 
       // If no preset port responded, attempt a quick ping on default web ports
       if (!hostContacted && !kIsWeb) {
@@ -415,12 +427,13 @@ class _QuickConnectTabState extends State<QuickConnectTab>
           ],
 
           // 3. Section Title: Live Local Servers with Mode Badge + Visible Edit Action
+          // 3. Section Title: Clean Header without Instructional Clutter
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  Text('LOCAL DEV SERVERS', style: AppTypography.sectionHud()),
+                  Text('DEV PORTS', style: AppTypography.sectionHud()),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -428,22 +441,22 @@ class _QuickConnectTabState extends State<QuickConnectTab>
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: _isCustomPinned
+                      color: _hasPinnedSlots
                           ? AppTheme.cyan.withValues(alpha: 0.12)
                           : Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: _isCustomPinned
+                        color: _hasPinnedSlots
                             ? AppTheme.cyan.withValues(alpha: 0.3)
                             : const Color(0xFF1B2232),
                         width: 0.8,
                       ),
                     ),
                     child: Text(
-                      _isCustomPinned ? 'PINNED' : 'AUTO',
+                      _hasPinnedSlots ? 'PINNED' : 'AUTO',
                       style: AppTypography.monoData(
                         fontSize: 9,
-                        color: _isCustomPinned
+                        color: _hasPinnedSlots
                             ? AppTheme.cyan
                             : AppTheme.textMuted,
                       ),
@@ -453,7 +466,31 @@ class _QuickConnectTabState extends State<QuickConnectTab>
               ),
               Row(
                 children: [
-                  // Dedicated Visible Edit Action
+                  if (_isProbing)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(right: 8),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        color: AppTheme.cyan,
+                      ),
+                    ),
+                  if (_hasPinnedSlots)
+                    Bounceable(
+                      scaleFactor: 0.95,
+                      onTap: _resetAllSlots,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text(
+                          'Reset',
+                          style: AppTypography.monoData(
+                            fontSize: 10.5,
+                            color: AppTheme.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
                   Bounceable(
                     scaleFactor: 0.95,
                     onTap: _showSlotPickerSheet,
@@ -462,7 +499,6 @@ class _QuickConnectTabState extends State<QuickConnectTab>
                         horizontal: 8,
                         vertical: 4,
                       ),
-                      margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         color: const Color(0xFF141B28),
                         borderRadius: BorderRadius.circular(6),
@@ -489,38 +525,6 @@ class _QuickConnectTabState extends State<QuickConnectTab>
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  if (_isCustomPinned)
-                    Bounceable(
-                      scaleFactor: 0.95,
-                      onTap: _resetToAutoAdaptive,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: Text(
-                          'Reset',
-                          style: AppTypography.monoData(
-                            fontSize: 10.5,
-                            color: AppTheme.textMuted,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (_isProbing)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(right: 6),
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 1.5,
-                        color: AppTheme.cyan,
-                      ),
-                    ),
-                  Text(
-                    _isProbing ? 'Probing…' : 'Tap or Edit',
-                    style: AppTypography.monoData(
-                      fontSize: 10.5,
-                      color: AppTheme.textMuted,
                     ),
                   ),
                 ],
@@ -583,7 +587,7 @@ class _QuickConnectTabState extends State<QuickConnectTab>
                 color: AppTheme.textMuted,
               ),
               label: Text(
-                'Looking for older sessions? Open History in Settings →',
+                'Open History in Settings →',
                 style: AppTypography.monoData(
                   fontSize: 11,
                   color: AppTheme.textMuted,

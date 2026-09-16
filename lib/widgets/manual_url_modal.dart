@@ -41,6 +41,19 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
     }
   }
 
+  Future<void> _pasteClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+    if (text != null && text.isNotEmpty) {
+      HapticFeedback.lightImpact();
+      _textController.text = text;
+      _textController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _textController.text.length),
+      );
+      setState(() {});
+    }
+  }
+
   void _connect() {
     final url = _textController.text.trim();
     if (!_isValid) return;
@@ -142,6 +155,34 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
                       color: AppTheme.textMuted,
                       size: 17,
                     ),
+                    suffixIcon: _textController.text.isNotEmpty &&
+                            _textController.text != 'http://' &&
+                            _textController.text != 'https://'
+                        ? IconButton(
+                            tooltip: 'Clear input',
+                            icon: const Icon(
+                              PhosphorIconsRegular.xCircle,
+                              color: AppTheme.textMuted,
+                              size: 17,
+                            ),
+                            onPressed: () {
+                              _textController.text = 'http://';
+                              _textController.selection =
+                                  TextSelection.fromPosition(
+                                const TextPosition(offset: 7),
+                              );
+                              setState(() {});
+                            },
+                          )
+                        : IconButton(
+                            tooltip: 'Paste from clipboard',
+                            icon: const Icon(
+                              PhosphorIconsRegular.clipboardText,
+                              color: AppTheme.cyan,
+                              size: 17,
+                            ),
+                            onPressed: _pasteClipboard,
+                          ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     border: const UnderlineInputBorder(
                       borderSide: BorderSide(color: AppTheme.previewBorder),

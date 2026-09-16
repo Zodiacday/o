@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import '../models/session_item.dart';
 import '../models/camera_capture_result.dart';
-import '../models/preview_connection.dart';
 import '../models/nearby_preview.dart';
 import '../services/history_service.dart';
 import '../services/native_camera_service.dart';
@@ -198,32 +197,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _pasteFromClipboard() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim();
-
-    final connection = PreviewConnection.tryParse(text ?? '');
-    if (connection != null) {
-      HapticFeedback.mediumImpact();
-      _launchApp(
-        connection.url,
-        title: connection.projectName,
-        controlUrl: connection.controlUrl,
-      );
-    } else {
-      if (mounted) {
-        AppToast.warning(
-          context,
-          title: text != null && text.isNotEmpty
-              ? 'Invalid Web URL'
-              : 'Clipboard is Empty',
-          description: text != null && text.isNotEmpty
-              ? 'Clipboard does not contain a valid http/https link'
-              : 'Copy a URL from your terminal or browser first',
-        );
-      }
-    }
-  }
 
   void _showManualUrlModal() {
     showModalBottomSheet(
@@ -291,7 +264,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         history: _history,
                         isLoading: _isLoading,
                         onOpenScanner: _openScanner,
-                        onPasteUrl: _pasteFromClipboard,
                         onEnterUrl: _showManualUrlModal,
                         onCopyCommand: _copyCliCommand,
                         isScannerBusy: _isOpeningScanner,

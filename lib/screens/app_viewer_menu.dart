@@ -4,9 +4,9 @@ part of 'app_viewer_screen.dart';
 
 extension _AppViewerMenu on _AppViewerScreenState {
   void _closeMenu() {
-    if (!mounted || !_isMenuOpen) return;
+    if (!mounted || !_liquidMenuController.isOpen) return;
     HapticFeedback.selectionClick();
-    setState(() => _isMenuOpen = false);
+    unawaited(_liquidMenuController.dismiss());
   }
 
   void _openViewportSwitcher() {
@@ -33,21 +33,8 @@ extension _AppViewerMenu on _AppViewerScreenState {
   }
 
   Widget _buildMenuOverlay() {
-    final mq = MediaQuery.of(context);
-    final screenH = mq.size.height;
-    final anchorY = _capsulePixelY ??
-        FloatingGhostCapsule.calculateCenterY(
-          screenH: screenH,
-          topInset: mq.padding.top,
-          bottomInset: mq.padding.bottom,
-          dy: _capsuleDy,
-        );
-
-    return LiquidDevMenuOverlay(
-      isOpen: _isMenuOpen,
-      onClose: _closeMenu,
-      anchorY: anchorY,
-      isRightSide: _capsuleIsRightSide,
+    return LiquidSidebarSeed(
+      controller: _liquidMenuController,
       title: _dynamicTitle,
       isCliConnected: _diagnosticsChannel?.isConnected ?? false,
       onHotReload: _triggerRemoteReload,

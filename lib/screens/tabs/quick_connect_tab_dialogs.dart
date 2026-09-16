@@ -116,11 +116,11 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                       'Customize Matrix Slots',
                       style: AppTypography.modalTitle(),
                     ),
-                    if (_isCustomPinned)
+                    if (_hasPinnedSlots)
                       TextButton(
                         onPressed: () {
                           Navigator.of(ctx).pop();
-                          _resetToAutoAdaptive();
+                          _resetAllSlots();
                         },
                         child: Text(
                           'Reset All to Auto',
@@ -138,8 +138,81 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                   style: AppTypography.subtitle(fontSize: 12),
                 ),
                 const SizedBox(height: 16),
-                ...List.generate(_presets.length, (i) {
-                  final preset = _presets[i];
+                ...List.generate(4, (i) {
+                  final preset = _slots[i];
+                  final isPinned = _pinnedSlots.containsKey(i);
+
+                  if (preset == null) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Bounceable(
+                        scaleFactor: 0.98,
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          _showEditPresetDialog(i);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF121724),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFF1E283C),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: AppTypography.monoCounter(
+                                      color: AppTheme.textMuted,
+                                    ).copyWith(fontSize: 14),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Slot ${i + 1}: Empty',
+                                      style: AppTypography.monoData(
+                                        fontSize: 13,
+                                        color: AppTheme.textMuted,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Tap to configure & pin',
+                                      style: AppTypography.subtitle(fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                PhosphorIconsRegular.plus,
+                                size: 15,
+                                color: AppTheme.cyan,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: Bounceable(
@@ -157,7 +230,9 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                           color: const Color(0xFF121724),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: const Color(0xFF1E283C),
+                            color: isPinned
+                                ? AppTheme.cyan.withValues(alpha: 0.35)
+                                : const Color(0xFF1E283C),
                             width: 0.8,
                           ),
                         ),
@@ -217,6 +292,42 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                                           ),
                                         ),
                                       ],
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isPinned
+                                              ? AppTheme.cyan.withValues(
+                                                  alpha: 0.15,
+                                                )
+                                              : Colors.white.withValues(
+                                                  alpha: 0.05,
+                                                ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          border: Border.all(
+                                            color: isPinned
+                                                ? AppTheme.cyan.withValues(
+                                                    alpha: 0.35,
+                                                  )
+                                                : const Color(0xFF1B2232),
+                                            width: 0.7,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          isPinned ? 'PINNED' : 'AUTO',
+                                          style: AppTypography.monoData(
+                                            fontSize: 7.5,
+                                            color: isPinned
+                                                ? AppTheme.cyan
+                                                : AppTheme.textMuted,
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   Text(
@@ -246,13 +357,16 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
   }
 
   void _showEditPresetDialog(int slotIndex) {
-    final currentPreset = _presets[slotIndex];
+    final currentPreset = _slots[slotIndex];
+    final isPinned = _pinnedSlots.containsKey(slotIndex);
     final portController = TextEditingController(
-      text: currentPreset.port.toString(),
+      text: currentPreset?.port.toString() ?? '',
     );
-    final nameController = TextEditingController(text: currentPreset.framework);
-    var isHttps = currentPreset.isHttps;
-    var userModifiedName = false;
+    final nameController = TextEditingController(
+      text: currentPreset?.framework ?? '',
+    );
+    var isHttps = currentPreset?.isHttps ?? false;
+    var userModifiedName = currentPreset != null;
 
     // Quick-pick framework chips
     final quickFrameworks = [
@@ -628,22 +742,22 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            if (_isCustomPinned)
+                            if (isPinned)
                               TextButton.icon(
                                 onPressed: () {
                                   Navigator.of(ctx).pop();
-                                  _resetToAutoAdaptive();
+                                  _unpinSlot(slotIndex);
                                 },
                                 icon: const Icon(
-                                  PhosphorIconsRegular.arrowCounterClockwise,
+                                  PhosphorIconsRegular.pushPinSlash,
                                   size: 14,
-                                  color: AppTheme.textMuted,
+                                  color: AppTheme.warning,
                                 ),
                                 label: Text(
-                                  'Reset to Auto',
+                                  'Unpin Slot',
                                   style: AppTypography.monoData(
                                     fontSize: 11,
-                                    color: AppTheme.textMuted,
+                                    color: AppTheme.warning,
                                   ),
                                 ),
                               )
@@ -690,12 +804,8 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                                       isCustom: true,
                                     );
 
-                                    final updatedList =
-                                        List<DevPortPreset>.from(_presets);
-                                    updatedList[slotIndex] = updatedPreset;
-
                                     Navigator.of(ctx).pop();
-                                    _saveCustomPresets(updatedList);
+                                    _pinSlot(slotIndex, updatedPreset);
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -738,6 +848,7 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
   }
 
   List<SessionItem> get _filteredActivePrototypes {
+    final activePresets = _slots.whereType<DevPortPreset>();
     return widget.history
         .where((item) {
           final uri = Uri.tryParse(item.url);
@@ -746,7 +857,7 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
           final itemPort = uri.hasPort
               ? uri.port
               : (uri.scheme == 'https' ? 443 : 80);
-          final isMatchingPreset = _presets.any(
+          final isMatchingPreset = activePresets.any(
             (p) => p.port == itemPort && itemHost == _targetHost,
           );
 
@@ -757,7 +868,7 @@ extension _QuickConnectDialogs on _QuickConnectTabState {
                 item.controlUrl != null) {
               return true;
             }
-            final matchingPreset = _presets.firstWhere(
+            final matchingPreset = activePresets.firstWhere(
               (p) => p.port == itemPort,
             );
             final defaultTitle =

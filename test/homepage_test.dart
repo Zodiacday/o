@@ -58,11 +58,10 @@ void main() {
     expect(find.text('Tap to scan QR code'), findsOneWidget);
     expect(find.text('Ready to scan'), findsNothing);
     expect(find.text('Scan preview'), findsNothing);
-    expect(find.text('Paste URL'), findsOneWidget);
+    expect(find.text('Paste URL'), findsNothing);
     expect(find.text('Enter URL'), findsOneWidget);
 
     await tester.tap(find.text('Tap to scan QR code'));
-    await tester.tap(find.text('Paste URL'));
     await tester.tap(find.text('Enter URL'));
     await tester.tap(find.byKey(const Key('copy-cli-command')));
 
@@ -72,7 +71,6 @@ void main() {
     expect(find.text('pp start'), findsOneWidget);
 
     expect(scanCount, 1);
-    expect(pasteCount, 1);
     expect(enterCount, 1);
     expect(copyCount, 1);
   });

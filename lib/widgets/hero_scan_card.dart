@@ -14,7 +14,7 @@ import 'preview_motion.dart';
 /// running Flutter preview. Everything else stays secondary and lightweight.
 class HeroScanCard extends StatelessWidget {
   final VoidCallback onTap;
-  final VoidCallback onPasteUrl;
+  final VoidCallback? onPasteUrl;
   final VoidCallback onEnterUrl;
   final VoidCallback onCopyCommand;
   final bool isBusy;
@@ -23,7 +23,7 @@ class HeroScanCard extends StatelessWidget {
   const HeroScanCard({
     super.key,
     required this.onTap,
-    required this.onPasteUrl,
+    this.onPasteUrl,
     required this.onEnterUrl,
     required this.onCopyCommand,
     this.isBusy = false,
@@ -68,24 +68,9 @@ class HeroScanCard extends StatelessWidget {
         ),
         const SizedBox(height: 26),
         _buildScanSurface(),
+        const SizedBox(height: 14),
+        Center(child: _buildEnterUrlAction()),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildTextAction(
-              label: 'Paste URL',
-              icon: PhosphorIconsRegular.clipboardText,
-              onTap: onPasteUrl,
-            ),
-            _buildActionDivider(),
-            _buildTextAction(
-              label: 'Enter URL',
-              icon: PhosphorIconsRegular.pencilSimple,
-              onTap: onEnterUrl,
-            ),
-          ],
-        ),
-        const SizedBox(height: 13),
         _buildCommandLink(),
         const SizedBox(height: 4),
         Center(child: NetworkStatusPill(service: networkService)),
@@ -170,47 +155,51 @@ class HeroScanCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTextAction({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildEnterUrlAction() {
     return Semantics(
       button: true,
-      label: label,
-      hint: 'Use a preview URL instead of scanning',
+      label: 'Enter URL',
+      hint: 'Manually enter a preview URL',
       child: Bounceable(
         scaleFactor: 0.96,
         onTap: () {
           HapticFeedback.lightImpact();
-          onTap();
+          onEnterUrl();
         },
-        child: DecoratedBox(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6.5),
           decoration: BoxDecoration(
-            color: AppTheme.cyan.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 14, color: AppTheme.cyan),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: AppTypography.button(color: AppTheme.textPrimary),
-                ),
-              ],
+            color: AppTheme.cyan.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.cyan.withValues(alpha: 0.28),
+              width: 0.8,
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                PhosphorIconsRegular.pencilSimple,
+                size: 13,
+                color: AppTheme.cyan,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Enter URL',
+                style: AppTypography.button(
+                  color: AppTheme.textPrimary,
+                ).copyWith(
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildActionDivider() {
-    return Container(width: 1, height: 14, color: AppTheme.previewBorder);
   }
 
   Widget _buildCommandLink() {

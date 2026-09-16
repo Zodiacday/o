@@ -57,17 +57,13 @@ void main() {
     // Check HUD
     expect(find.text('TARGET WORKSTATION'), findsOneWidget);
     expect(find.text('192.168.1.100'), findsOneWidget);
-    expect(find.text('Change IP'), findsOneWidget);
+    expect(find.text('UNREACHABLE'), findsOneWidget);
 
-    // Check Dev Framework Matrix
+    // Check Dev Framework Matrix: Slot 1 auto-learns 5173, slots 2-4 stay EMPTY
     expect(find.text(':5173'), findsOneWidget);
     expect(find.text('Vite / Astro'), findsOneWidget);
-    expect(find.text(':3000'), findsOneWidget);
-    expect(find.text('Next.js'), findsOneWidget);
-    expect(find.text(':8080'), findsOneWidget);
-    expect(find.text('Flutter Web'), findsOneWidget);
-    expect(find.text(':8000'), findsOneWidget);
-    expect(find.text('FastAPI / API'), findsOneWidget);
+    expect(find.text('EMPTY'), findsNWidgets(3));
+    expect(find.text('Assign Port'), findsNWidgets(3));
 
     // Check Active Prototypes
     expect(find.text('ACTIVE PROTOTYPES TODAY'), findsOneWidget);

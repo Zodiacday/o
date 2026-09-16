@@ -6,9 +6,9 @@ part of 'app_viewer_screen.dart';
 
 extension _AppViewerControls on _AppViewerScreenState {
   void _openMenuFromShake() {
-    if (!mounted || _isMenuOpen) return;
+    if (!mounted || _liquidMenuController.isOpen) return;
     HapticFeedback.mediumImpact();
-    setState(() => _isMenuOpen = true);
+    unawaited(_liquidMenuController.openMenu());
   }
 
   void _handleRemoteDiagnostic(PreviewDiagnostic diagnostic) {
@@ -97,6 +97,8 @@ extension _AppViewerControls on _AppViewerScreenState {
     );
   }
 
+  // Kept for the upcoming annotation node in the liquid control system.
+  // ignore: unused_element
   Future<void> _openBugAnnotator() async {
     _closeMenu();
     HapticFeedback.mediumImpact();

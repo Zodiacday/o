@@ -2,153 +2,189 @@ part of 'quick_connect_tab.dart';
 
 extension _QuickConnectSections on _QuickConnectTabState {
   Widget _buildWorkstationHud() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B0E17),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1B2232), width: 0.9),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppTheme.cyan.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              PhosphorIconsRegular.desktop,
-              size: 16,
-              color: AppTheme.cyan,
-            ),
+    return Bounceable(
+      scaleFactor: 0.98,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _showEditHostDialog();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF090C14),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _isHostReachable
+                ? const Color(0xFF192233)
+                : AppTheme.warning.withValues(alpha: 0.40),
+            width: 0.9,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          boxShadow: [
+            if (!_isHostReachable)
+              BoxShadow(
+                color: AppTheme.warning.withValues(alpha: 0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Text(
-                      'TARGET WORKSTATION',
-                      style: AppTypography.monoData(
-                        fontSize: 9.5,
-                        color: AppTheme.textMuted,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1.5,
-                      ),
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: _isHostReachable
-                            ? AppTheme.statusGreen.withValues(alpha: 0.12)
-                            : AppTheme.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
+                        color: const Color(0xFF101624),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: _isHostReachable
-                              ? AppTheme.statusGreen.withValues(alpha: 0.35)
-                              : AppTheme.warning.withValues(alpha: 0.40),
-                          width: 0.7,
+                          color: const Color(0xFF1C283E),
+                          width: 0.8,
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: _isHostReachable
-                                  ? AppTheme.statusGreen
-                                  : AppTheme.warning,
-                              shape: BoxShape.circle,
-                            ),
+                      child: const Icon(
+                        PhosphorIconsRegular.desktop,
+                        size: 17,
+                        color: AppTheme.cyan,
+                      ),
+                    ),
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: _isHostReachable
+                              ? AppTheme.statusGreen
+                              : AppTheme.warning,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0xFF090C14),
+                            width: 1.8,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _isHostReachable ? 'REACHABLE' : 'UNREACHABLE',
-                            style: AppTypography.monoData(
-                              fontSize: 8.5,
-                              color: _isHostReachable
-                                  ? AppTheme.statusGreen
-                                  : AppTheme.warning,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_isHostReachable
+                                      ? AppTheme.statusGreen
+                                      : AppTheme.warning)
+                                  .withValues(alpha: 0.6),
+                              blurRadius: 6,
+                              spreadRadius: 1,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _targetHost,
-                  style: AppTypography.monoData(
-                    fontSize: 13,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                if (!_isHostReachable) ...[
-                  const SizedBox(height: 4),
-                  Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        PhosphorIconsRegular.warningCircle,
-                        size: 11,
-                        color: AppTheme.warning,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Host timed out. Ensure phone & PC are on the same Wi-Fi.',
-                          style: AppTypography.monoData(
-                            fontSize: 9.5,
-                            color: AppTheme.warning,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        _targetHost,
+                        style: AppTypography.monoData(
+                          fontSize: 14.5,
+                          color: Colors.white,
+                        ).copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
                         ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'TARGET WORKSTATION',
+                        style: AppTypography.monoData(
+                          fontSize: 9,
+                          color: AppTheme.textMuted,
+                        ).copyWith(letterSpacing: 0.6),
                       ),
                     ],
                   ),
-                ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _isHostReachable
+                            ? AppTheme.statusGreen.withValues(alpha: 0.10)
+                            : AppTheme.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(
+                          color: _isHostReachable
+                              ? AppTheme.statusGreen.withValues(alpha: 0.28)
+                              : AppTheme.warning.withValues(alpha: 0.35),
+                          width: 0.7,
+                        ),
+                      ),
+                      child: Text(
+                        _isHostReachable ? 'ONLINE' : 'UNREACHABLE',
+                        style: AppTypography.monoData(
+                          fontSize: 8.5,
+                          color: _isHostReachable
+                              ? AppTheme.statusGreen
+                              : AppTheme.warning,
+                        ).copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      PhosphorIconsRegular.pencilSimple,
+                      size: 13,
+                      color: AppTheme.textMuted,
+                    ),
+                  ],
+                ),
               ],
             ),
-          ),
-          Bounceable(
-            scaleFactor: 0.95,
-            onTap: _showEditHostDialog,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141B28),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF243044)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    PhosphorIconsRegular.pencilSimple,
-                    size: 12,
-                    color: AppTheme.cyan,
+            if (!_isHostReachable) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppTheme.warning.withValues(alpha: 0.20),
+                    width: 0.7,
                   ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Change IP',
-                    style: AppTypography.button(
-                      fontSize: 11,
-                      color: AppTheme.cyan,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      PhosphorIconsRegular.warningCircle,
+                      size: 12,
+                      color: AppTheme.warning,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Host timed out. Tap to change IP or check your Wi-Fi.',
+                        style: AppTypography.monoData(
+                          fontSize: 10,
+                          color: AppTheme.warning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -260,9 +296,14 @@ extension _QuickConnectSections on _QuickConnectTabState {
         mainAxisSpacing: 12,
         childAspectRatio: 1.32,
       ),
-      itemCount: _presets.length,
+      itemCount: 4,
       itemBuilder: (context, index) {
-        final preset = _presets[index];
+        final preset = _slots[index];
+        if (preset == null) {
+          return _buildEmptySlotCard(index);
+        }
+
+        final isPinned = _pinnedSlots.containsKey(index);
         final isLive = _livePorts[preset.port] ?? false;
         final scheme = preset.isHttps ? 'https' : 'http';
         final targetUrl = '$scheme://$_targetHost:${preset.port}';
@@ -288,7 +329,9 @@ extension _QuickConnectSections on _QuickConnectTabState {
               border: Border.all(
                 color: isLive
                     ? AppTheme.cyan.withValues(alpha: 0.40)
-                    : const Color(0xFF1B2232),
+                    : (isPinned
+                        ? AppTheme.cyan.withValues(alpha: 0.25)
+                        : const Color(0xFF1B2232)),
                 width: 0.9,
               ),
             ),
@@ -336,44 +379,52 @@ extension _QuickConnectSections on _QuickConnectTabState {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
+                        if (isPinned) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4.5,
+                              vertical: 1.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cyan.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: AppTheme.cyan.withValues(alpha: 0.35),
+                                width: 0.7,
+                              ),
+                            ),
+                            child: Text(
+                              'PINNED',
+                              style: AppTypography.monoData(
+                                fontSize: 7.5,
+                                color: AppTheme.cyan,
+                              ),
+                            ),
                           ),
+                          const SizedBox(width: 5),
+                        ],
+                        // Live / Idle glowing beacon dot
+                        Container(
+                          width: 7,
+                          height: 7,
                           decoration: BoxDecoration(
                             color: isLive
-                                ? AppTheme.statusGreen.withValues(alpha: 0.15)
-                                : Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 5,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  color: isLive
-                                      ? AppTheme.statusGreen
-                                      : const Color(0xFF4A5568),
-                                  shape: BoxShape.circle,
+                                ? AppTheme.statusGreen
+                                : const Color(0xFF384358),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              if (isLive)
+                                BoxShadow(
+                                  color: AppTheme.statusGreen.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                isLive ? 'LIVE' : 'IDLE',
-                                style: AppTypography.monoData(
-                                  fontSize: 8.5,
-                                  color: isLive
-                                      ? AppTheme.statusGreen
-                                      : const Color(0xFF718096),
-                                ),
-                              ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 6),
                         // Explicit, visible, 1-tap edit trigger
                         Bounceable(
                           scaleFactor: 0.90,
@@ -402,29 +453,106 @@ extension _QuickConnectSections on _QuickConnectTabState {
                     ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      preset.framework,
-                      style: AppTypography.headline().copyWith(fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      preset.description,
-                      style: AppTypography.subtitle(fontSize: 10.5),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                Text(
+                  preset.framework,
+                  style: AppTypography.headline().copyWith(fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEmptySlotCard(int index) {
+    return Bounceable(
+      scaleFactor: 0.96,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _showEditPresetDialog(index);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: const Color(0xFF07090E),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF161D2B),
+            width: 0.9,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'SLOT ${index + 1}',
+                  style: AppTypography.monoCounter(
+                    color: AppTheme.textMuted,
+                  ).copyWith(fontSize: 14),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2.5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(
+                      color: const Color(0xFF1B2232),
+                      width: 0.7,
+                    ),
+                  ),
+                  child: Text(
+                    'EMPTY',
+                    style: AppTypography.monoData(
+                      fontSize: 8,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppTheme.cyan.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.cyan.withValues(alpha: 0.20),
+                      width: 0.7,
+                    ),
+                  ),
+                  child: const Icon(
+                    PhosphorIconsRegular.plus,
+                    size: 13,
+                    color: AppTheme.cyan,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Assign Port',
+                    style: AppTypography.headline().copyWith(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

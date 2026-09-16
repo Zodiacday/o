@@ -18,12 +18,9 @@ import '../widgets/preview_loading_progress.dart';
 import '../widgets/preview_error_sheet.dart';
 import '../widgets/location_mock_sheet.dart';
 import '../widgets/viewport_switcher_sheet.dart';
-import '../widgets/floating_ghost_capsule.dart';
+import '../widgets/liquid_sidebar_seed.dart';
 import '../widgets/mini_terminal_drawer.dart';
 import '../widgets/bug_annotator_modal.dart';
-import '../widgets/liquid_dev_menu.dart';
-
-export '../widgets/liquid_dev_menu.dart';
 
 part 'app_viewer_controls.dart';
 part 'app_viewer_menu.dart';
@@ -58,12 +55,9 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   bool _hasError = false;
   PreviewDiagnostic? _diagnostic;
   bool _errorDismissed = false;
-  bool _isMenuOpen = false;
+  late final LiquidDevControlController _liquidMenuController;
   final bool _useSafeArea = false;
   final bool _showFloatingCapsule = true;
-  double _capsuleDy = 0.65;
-  double? _capsulePixelY;
-  bool _capsuleIsRightSide = true;
   late final ShakeDetector _shakeDetector;
   PreviewDiagnosticsChannel? _diagnosticsChannel;
   Timer? _loadingCompletionTimer;
@@ -91,6 +85,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _liquidMenuController = LiquidDevControlController();
     _dynamicTitle = widget.title;
     _nativeBridge = NativeBridgeHandler(
       onTitleChanged: (title) {
@@ -421,6 +416,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _loadingCompletionTimer?.cancel();
     _reloadFlashTimer?.cancel();
+    _liquidMenuController.dispose();
     _shakeDetector.stop();
     unawaited(_diagnosticsChannel?.dispose());
     SystemChrome.setEnabledSystemUIMode(
@@ -443,8 +439,13 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _showExitDialog();
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_liquidMenuController.isOpen) {
+          await _liquidMenuController.dismiss();
+          return;
+        }
+        _showExitDialog();
       },
       child: Scaffold(
         backgroundColor: AppTheme.background,
@@ -501,25 +502,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 },
               ),
 
-            // 5. Ethereal Ghost Capsule HUD (Floating 1-tap hot reload & gestures)
-            if (_showFloatingCapsule)
-              FloatingGhostCapsule(
-                onHotReload: _triggerRemoteReload,
-                onOpenMenu: _openMenuFromShake,
-                onOpenTerminal: _openMiniTerminal,
-                onAnnotateBug: _openBugAnnotator,
-                onPositionChanged: (dy, isRight, pixelY) {
-                  setState(() {
-                    _capsuleDy = dy;
-                    _capsuleIsRightSide = isRight;
-                    _capsulePixelY = pixelY;
-                  });
-                },
-                isCliConnected: _diagnosticsChannel?.isConnected ?? false,
-                isMenuOpen: _isMenuOpen,
-              ),
-
-            // 6. Reload confirmation glow vignette
+            // 5. Reload confirmation glow vignette
             IgnorePointer(
               child: AnimatedOpacity(
                 opacity: _showReloadFlash ? 1.0 : 0.0,
@@ -543,8 +526,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
               ),
             ),
 
-            // 7. Shake Dev Menu Overlay
-            _buildMenuOverlay(),
+            // 6. Unified nano seed, tool orbit, and morphing menu surface.
+            if (_showFloatingCapsule) _buildMenuOverlay(),
           ],
         ),
       ),

@@ -18,7 +18,7 @@ class ScansTab extends StatelessWidget {
   final List<SessionItem> history;
   final bool isLoading;
   final VoidCallback onOpenScanner;
-  final VoidCallback onPasteUrl;
+  final VoidCallback? onPasteUrl;
   final VoidCallback onEnterUrl;
   final VoidCallback onCopyCommand;
   final bool isScannerBusy;
@@ -38,7 +38,7 @@ class ScansTab extends StatelessWidget {
     required this.history,
     required this.isLoading,
     required this.onOpenScanner,
-    required this.onPasteUrl,
+    this.onPasteUrl,
     required this.onEnterUrl,
     required this.onCopyCommand,
     this.isScannerBusy = false,
@@ -65,7 +65,6 @@ class ScansTab extends StatelessWidget {
         // Primary Hero: Tap to scan QR code (always present)
         HeroScanCard(
           onTap: onOpenScanner,
-          onPasteUrl: onPasteUrl,
           onEnterUrl: onEnterUrl,
           onCopyCommand: onCopyCommand,
           isBusy: isScannerBusy,
