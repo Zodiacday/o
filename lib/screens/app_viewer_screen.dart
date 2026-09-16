@@ -14,6 +14,7 @@ import '../services/preview_diagnostics_channel.dart';
 import '../services/native_bridge.dart';
 import '../services/device_viewport_sensor.dart';
 import '../models/preview_diagnostic.dart';
+import '../models/network_request_entry.dart';
 import '../widgets/preview_loading_progress.dart';
 import '../widgets/preview_error_sheet.dart';
 import '../widgets/location_mock_sheet.dart';
@@ -29,12 +30,14 @@ class AppViewerScreen extends StatefulWidget {
   final String url;
   final String? title;
   final String? controlUrl;
+  final WebViewController? preloadedController;
 
   const AppViewerScreen({
     super.key,
     required this.url,
     this.title,
     this.controlUrl,
+    this.preloadedController,
   });
 
   @override
@@ -43,7 +46,7 @@ class AppViewerScreen extends StatefulWidget {
 
 class _AppViewerScreenState extends State<AppViewerScreen>
     with WidgetsBindingObserver {
-  static const _minimumLoadingDisplay = Duration(milliseconds: 900);
+  static const _minimumLoadingDisplay = Duration(milliseconds: 200);
 
   late final WebViewController _controller;
   late final NativeBridgeHandler _nativeBridge;
@@ -71,6 +74,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   SimulatedDeviceProfile _selectedDevice = defaultDeviceProfiles.first;
   SimulatedDeviceProfile? _nativeDevice;
   final List<TerminalLogEntry> _terminalLogs = [];
+  final List<NetworkRequestEntry> _networkRequests = [];
   bool _showReloadFlash = false;
   Timer? _reloadFlashTimer;
 
@@ -109,6 +113,11 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           } catch (_) {}
         }
       },
+      onPageReady: () {
+        if (mounted) {
+          _signalPageReady();
+        }
+      },
       onConsoleLog: (message, level) {
         if (!mounted) return;
         setState(() {
@@ -121,6 +130,13 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             ),
           );
           if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
+        });
+      },
+      onNetworkRequest: (entry) {
+        if (!mounted) return;
+        setState(() {
+          _networkRequests.add(entry);
+          if (_networkRequests.length > 250) _networkRequests.removeAt(0);
         });
       },
     );
@@ -170,7 +186,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   }
 
   void _initializeWebView() {
-    _controller = WebViewController()
+    _controller = widget.preloadedController ?? WebViewController();
+    _controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppTheme.background)
       ..addJavaScriptChannel(
@@ -494,17 +511,24 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 ),
               ),
 
-            // 3. Calm loading progress surface
-            if (!_isPageReady && !_hasError)
-              Positioned.fill(
-                child: ColoredBox(
-                  color: AppTheme.background,
-                  child: PreviewLoadingProgress(
-                    progress: _loadingProgress,
-                    projectName: widget.title,
+            // 3. Calm loading progress surface with smooth GPU fade-out
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: _isPageReady || _hasError,
+                child: AnimatedOpacity(
+                  opacity: (!_isPageReady && !_hasError) ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOut,
+                  child: ColoredBox(
+                    color: AppTheme.background,
+                    child: PreviewLoadingProgress(
+                      progress: _loadingProgress,
+                      projectName: widget.title,
+                    ),
                   ),
                 ),
               ),
+            ),
 
             // 4. Remote/Local Diagnostics error sheet
             if (_diagnostic != null && !_errorDismissed)

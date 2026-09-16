@@ -160,8 +160,12 @@ extension _AppViewerControls on _AppViewerScreenState {
       backgroundColor: Colors.transparent,
       builder: (ctx) => MiniTerminalDrawer(
         logs: _terminalLogs,
+        networkRequests: _networkRequests,
         onClear: () {
           setState(() => _terminalLogs.clear());
+        },
+        onClearNetwork: () {
+          setState(() => _networkRequests.clear());
         },
         onClose: () => Navigator.of(ctx).pop(),
       ),
@@ -205,29 +209,31 @@ extension _AppViewerControls on _AppViewerScreenState {
     );
   }
 
+  void _signalPageReady() {
+    if (!mounted || _hasError || _isPageReady) return;
+    _loadingCompletionTimer?.cancel();
+    _diagnosticsChannel?.reportProgress(100, state: 'ready');
+    setState(() {
+      _isPageReady = true;
+      _hasError = false;
+      _diagnostic = null;
+      _errorDismissed = false;
+    });
+  }
+
   void _completeLoadingWhenVisibleLongEnough() {
+    if (_isPageReady) return;
     final startedAt = _loadingStartedAt ?? DateTime.now();
     final elapsed = DateTime.now().difference(startedAt);
     final remaining = _AppViewerScreenState._minimumLoadingDisplay - elapsed;
 
-    void complete() {
-      if (!mounted || _hasError) return;
-      _diagnosticsChannel?.reportProgress(100, state: 'ready');
-      setState(() {
-        _isPageReady = true;
-        _hasError = false;
-        _diagnostic = null;
-        _errorDismissed = false;
-      });
-    }
-
     if (remaining <= Duration.zero) {
-      complete();
+      _signalPageReady();
       return;
     }
 
     _loadingCompletionTimer?.cancel();
-    _loadingCompletionTimer = Timer(remaining, complete);
+    _loadingCompletionTimer = Timer(remaining, _signalPageReady);
   }
 
   void _copyDiagnostic() {

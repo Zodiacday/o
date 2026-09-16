@@ -17,12 +17,12 @@ const String nativeBridgeCoreScript = r'''
     }
   } catch (e) {}
 
-  // 2. Native momentum scrolling styles & eliminate web bounce
+  // 2. Native momentum scrolling styles & eliminate WebKit 300ms tap delay
   try {
     if (!document.getElementById('__previewport_native_styles')) {
       var style = document.createElement('style');
       style.id = '__previewport_native_styles';
-      style.textContent = 'html, body { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }';
+      style.textContent = 'html, body, #root, flt-glass-pane, flutter-view, [data-v-app] { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }';
       if (document.head) document.head.appendChild(style);
     }
   } catch (e) {}
@@ -297,6 +297,258 @@ const String nativeBridgeCoreScript = r'''
         if (orig) orig.apply(console, arguments);
       };
     });
+  } catch (e) {}
+
+  // 8. Signal first-paint ready to native shell (eliminates artificial loading wait)
+  try {
+    function signalReady() {
+      if (window.__previewPortFirstPaintSignaled) return;
+      window.__previewPortFirstPaintSignaled = true;
+      if (window.PreviewPortNativeBridge) {
+        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+          type: 'ready'
+        }));
+      }
+    }
+
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(signalReady);
+      });
+    } else {
+      setTimeout(signalReady, 40);
+    }
+
+    if (document.readyState === 'complete') {
+      signalReady();
+    } else {
+      window.addEventListener('load', signalReady);
+    }
+  } catch (e) {}
+
+  // 9. The Localhost Auto-Fixer (Rewrites localhost/127.0.0.1 to workstation LAN IP)
+  try {
+    var currentHost = window.location.hostname;
+    // Only rewrite if we are loaded from an actual LAN IP or hostname (not localhost/loopback itself)
+    var isLoopbackHost = currentHost === 'localhost' || currentHost === '127.0.0.1' || currentHost === '::1' || !currentHost;
+    if (!isLoopbackHost) {
+      var localhostRegex = /^(https?|wss?):\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i;
+      var loggedRewrites = {};
+
+      function rewriteUrl(rawUrl) {
+        if (!rawUrl || typeof rawUrl !== 'string') return rawUrl;
+        var match = rawUrl.match(localhostRegex);
+        if (!match) return rawUrl;
+        var protocol = match[1];
+        var portPart = match[3] || '';
+        var pathPart = match[4] || '';
+        var rewritten = protocol + '://' + currentHost + portPart + pathPart;
+
+        var logKey = match[2] + portPart + '->' + currentHost + portPart;
+        if (!loggedRewrites[logKey]) {
+          loggedRewrites[logKey] = true;
+          if (window.PreviewPortNativeBridge) {
+            window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+              type: 'console',
+              level: 'info',
+              message: '⚡ [PreviewPort] Auto-routed ' + match[2] + portPart + ' -> ' + currentHost + portPart
+            }));
+          }
+        }
+        return rewritten;
+      }
+
+      // Intercept window.fetch
+      if (window.fetch) {
+        var originalFetch = window.fetch;
+        window.fetch = function(input, init) {
+          try {
+            if (typeof input === 'string') {
+              input = rewriteUrl(input);
+            } else if (input instanceof URL) {
+              input = new URL(rewriteUrl(input.href));
+            } else if (input && typeof input === 'object' && input.url) {
+              var rewritten = rewriteUrl(input.url);
+              if (rewritten !== input.url) {
+                input = new Request(rewritten, input);
+              }
+            }
+          } catch (e) {}
+          return originalFetch.call(this, input, init);
+        };
+      }
+
+      // Intercept XMLHttpRequest
+      if (window.XMLHttpRequest && window.XMLHttpRequest.prototype && window.XMLHttpRequest.prototype.open) {
+        var originalXhrOpen = window.XMLHttpRequest.prototype.open;
+        window.XMLHttpRequest.prototype.open = function(method, url) {
+          try {
+            if (typeof url === 'string') {
+              url = rewriteUrl(url);
+            }
+          } catch (e) {}
+          var args = Array.prototype.slice.call(arguments);
+          args[1] = url;
+          return originalXhrOpen.apply(this, args);
+        };
+      }
+
+      // Intercept window.WebSocket
+      if (window.WebSocket) {
+        var OriginalWebSocket = window.WebSocket;
+        var ProxiedWebSocket = function(url, protocols) {
+          var targetUrl = rewriteUrl(url);
+          return protocols ? new OriginalWebSocket(targetUrl, protocols) : new OriginalWebSocket(targetUrl);
+        };
+        ProxiedWebSocket.prototype = OriginalWebSocket.prototype;
+        ProxiedWebSocket.CONNECTING = OriginalWebSocket.CONNECTING;
+        ProxiedWebSocket.OPEN = OriginalWebSocket.OPEN;
+        ProxiedWebSocket.CLOSING = OriginalWebSocket.CLOSING;
+        ProxiedWebSocket.CLOSED = OriginalWebSocket.CLOSED;
+        window.WebSocket = ProxiedWebSocket;
+      }
+
+      // Intercept window.EventSource
+      if (window.EventSource) {
+        var OriginalEventSource = window.EventSource;
+        var ProxiedEventSource = function(url, eventSourceInitDict) {
+          var targetUrl = rewriteUrl(url);
+          return eventSourceInitDict ? new OriginalEventSource(targetUrl, eventSourceInitDict) : new OriginalEventSource(targetUrl);
+        };
+        ProxiedEventSource.prototype = OriginalEventSource.prototype;
+        ProxiedEventSource.CONNECTING = OriginalEventSource.CONNECTING;
+        ProxiedEventSource.OPEN = OriginalEventSource.OPEN;
+        ProxiedEventSource.CLOSED = OriginalEventSource.CLOSED;
+        window.EventSource = ProxiedEventSource;
+      }
+    }
+  } catch (e) {}
+
+  // 10. In-App Network Inspector (Telemetry for fetch & XMLHttpRequest)
+  try {
+    function emitNetworkEvent(req) {
+      if (!window.PreviewPortNativeBridge) return;
+      try {
+        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+          type: 'network',
+          request: req
+        }));
+      } catch (e) {}
+    }
+
+    // Intercept fetch
+    if (window.fetch) {
+      var prevFetch = window.fetch;
+      window.fetch = function(input, init) {
+        var start = window.performance ? window.performance.now() : Date.now();
+        var rawUrl = '';
+        var method = 'GET';
+
+        try {
+          if (typeof input === 'string') {
+            rawUrl = input;
+          } else if (input instanceof URL) {
+            rawUrl = input.href;
+          } else if (input && typeof input === 'object') {
+            rawUrl = input.url || '';
+            if (input.method) method = input.method.toUpperCase();
+          }
+          if (init && init.method) {
+            method = init.method.toUpperCase();
+          }
+        } catch (e) {}
+
+        return prevFetch.call(this, input, init).then(function(res) {
+          try {
+            var duration = Math.round((window.performance ? window.performance.now() : Date.now()) - start);
+            emitNetworkEvent({
+              id: 'req_' + Math.random().toString(36).substr(2, 9),
+              url: (res && res.url) ? res.url : rawUrl,
+              method: method,
+              status: (res && typeof res.status === 'number') ? res.status : 200,
+              statusText: (res && res.statusText) ? res.statusText : 'OK',
+              durationMs: duration,
+              initiator: 'fetch',
+              timestamp: Date.now()
+            });
+          } catch (e) {}
+          return res;
+        }).catch(function(err) {
+          try {
+            var duration = Math.round((window.performance ? window.performance.now() : Date.now()) - start);
+            emitNetworkEvent({
+              id: 'req_' + Math.random().toString(36).substr(2, 9),
+              url: rawUrl,
+              method: method,
+              status: 0,
+              statusText: (err && err.message) ? err.message : 'Network Error',
+              durationMs: duration,
+              initiator: 'fetch',
+              timestamp: Date.now()
+            });
+          } catch (e) {}
+          throw err;
+        });
+      };
+    }
+
+    // Intercept XMLHttpRequest
+    if (window.XMLHttpRequest && window.XMLHttpRequest.prototype && window.XMLHttpRequest.prototype.open && window.XMLHttpRequest.prototype.send) {
+      var prevXhrOpen = window.XMLHttpRequest.prototype.open;
+      var prevXhrSend = window.XMLHttpRequest.prototype.send;
+
+      window.XMLHttpRequest.prototype.open = function(method, url) {
+        try {
+          this.__pp_method = (method || 'GET').toUpperCase();
+          this.__pp_url = typeof url === 'string' ? url : String(url);
+        } catch (e) {}
+        return prevXhrOpen.apply(this, arguments);
+      };
+
+      window.XMLHttpRequest.prototype.send = function() {
+        var xhr = this;
+        var start = window.performance ? window.performance.now() : Date.now();
+
+        function onComplete() {
+          if (xhr.__pp_completed) return;
+          xhr.__pp_completed = true;
+          try {
+            var duration = Math.round((window.performance ? window.performance.now() : Date.now()) - start);
+            var status = xhr.status || 0;
+            var statusText = xhr.statusText || (status >= 200 && status < 300 ? 'OK' : 'Error');
+            var finalUrl = xhr.responseURL || xhr.__pp_url || '';
+            emitNetworkEvent({
+              id: 'req_' + Math.random().toString(36).substr(2, 9),
+              url: finalUrl,
+              method: xhr.__pp_method || 'GET',
+              status: status,
+              statusText: statusText,
+              durationMs: duration,
+              initiator: 'xhr',
+              timestamp: Date.now()
+            });
+          } catch (e) {}
+        }
+
+        try {
+          if (xhr.addEventListener) {
+            xhr.addEventListener('loadend', onComplete);
+            xhr.addEventListener('error', onComplete);
+            xhr.addEventListener('abort', onComplete);
+          } else {
+            var origOnReadyState = xhr.onreadystatechange;
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState === 4) {
+                onComplete();
+              }
+              if (origOnReadyState) origOnReadyState.apply(this, arguments);
+            };
+          }
+        } catch (e) {}
+
+        return prevXhrSend.apply(this, arguments);
+      };
+    }
   } catch (e) {}
 })();
 ''';

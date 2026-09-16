@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 
+import '../models/network_request_entry.dart';
 import 'native_bridge_script.dart';
 
 enum NativeHapticType { selection, light, medium, heavy, vibrate }
@@ -12,14 +13,18 @@ class NativeBridgeHandler {
   final void Function(NativeHapticType hapticType)? onHapticTriggered;
   final void Function(bool isDarkContent)? onThemeChanged;
   final void Function(Color color)? onThemeColorDetected;
+  final void Function()? onPageReady;
   final void Function(String message, String level)? onConsoleLog;
+  final void Function(NetworkRequestEntry request)? onNetworkRequest;
 
   const NativeBridgeHandler({
     this.onTitleChanged,
     this.onHapticTriggered,
     this.onThemeChanged,
     this.onThemeColorDetected,
+    this.onPageReady,
     this.onConsoleLog,
+    this.onNetworkRequest,
   });
 
   /// Generates the complete Expo-compatible and PreviewPort injection script
@@ -172,11 +177,19 @@ class NativeBridgeHandler {
             onThemeColorDetected?.call(parsed);
           }
         }
+      } else if (type == 'ready') {
+        onPageReady?.call();
       } else if (type == 'console') {
         final message = data['message'] as String?;
         final level = data['level'] as String? ?? 'info';
         if (message != null && message.trim().isNotEmpty) {
           onConsoleLog?.call(message.trim(), level);
+        }
+      } else if (type == 'network') {
+        final reqMap = data['request'];
+        if (reqMap is Map<String, dynamic>) {
+          final entry = NetworkRequestEntry.fromJson(reqMap);
+          onNetworkRequest?.call(entry);
         }
       }
     } catch (_) {

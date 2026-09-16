@@ -1,5 +1,6 @@
 import 'dart:ui' show Color;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:previewport/models/network_request_entry.dart';
 import 'package:previewport/services/native_bridge.dart';
 
 void main() {
@@ -13,11 +14,17 @@ void main() {
       expect(NativeBridgeHandler.injectionScript, contains('MutationObserver'));
       expect(NativeBridgeHandler.injectionScript, contains('viewport-fit=cover'));
       expect(NativeBridgeHandler.injectionScript, contains('overscroll-behavior-y'));
+      expect(NativeBridgeHandler.injectionScript, contains('touch-action: manipulation'));
       expect(NativeBridgeHandler.injectionScript, contains('setStatusBarStyle'));
       expect(NativeBridgeHandler.injectionScript, contains('window.safeAreaInsets'));
       expect(NativeBridgeHandler.injectionScript, contains('ExpoStatusBar'));
       expect(NativeBridgeHandler.injectionScript, contains('setNetworkCondition'));
       expect(NativeBridgeHandler.injectionScript, contains('setMockLocation'));
+      expect(NativeBridgeHandler.injectionScript, contains('Auto-routed'));
+      expect(NativeBridgeHandler.injectionScript, contains('localhost'));
+      expect(NativeBridgeHandler.injectionScript, contains('127.0.0.1'));
+      expect(NativeBridgeHandler.injectionScript, contains('window.WebSocket'));
+      expect(NativeBridgeHandler.injectionScript, contains('window.EventSource'));
     });
 
     test('buildSetNetworkConditionScript formats JS statement correctly', () {
@@ -129,6 +136,68 @@ void main() {
       expect(NativeBridgeHandler.parseCssColor('transparent'), isNull);
       expect(NativeBridgeHandler.parseCssColor(''), isNull);
       expect(NativeBridgeHandler.parseCssColor('invalid'), isNull);
+    });
+
+    test('parses ready first-paint signal events', () {
+      var readyCalled = false;
+      final handler = NativeBridgeHandler(
+        onPageReady: () => readyCalled = true,
+      );
+
+      handler.handleMessage('{"type":"ready"}');
+      expect(readyCalled, isTrue);
+    });
+
+    test('parses console log events including auto-routing notifications', () {
+      String? loggedMessage;
+      String? loggedLevel;
+      final handler = NativeBridgeHandler(
+        onConsoleLog: (msg, lvl) {
+          loggedMessage = msg;
+          loggedLevel = lvl;
+        },
+      );
+
+      handler.handleMessage('{"type":"console","level":"info","message":"⚡ [PreviewPort] Auto-routed localhost:8000 -> 192.168.1.50:8000"}');
+      expect(loggedMessage, contains('Auto-routed localhost:8000 -> 192.168.1.50:8000'));
+      expect(loggedLevel, equals('info'));
+    });
+
+    test('parses network inspection events into NetworkRequestEntry', () {
+      NetworkRequestEntry? capturedRequest;
+      final handler = NativeBridgeHandler(
+        onNetworkRequest: (req) => capturedRequest = req,
+      );
+
+      handler.handleMessage('''{
+        "type": "network",
+        "request": {
+          "id": "req_xyz",
+          "url": "http://192.168.1.50:8000/api/v1/auth/session",
+          "method": "POST",
+          "status": 200,
+          "statusText": "OK",
+          "durationMs": 35,
+          "initiator": "fetch",
+          "timestamp": 1726528800000
+        }
+      }''');
+
+      expect(capturedRequest, isNotNull);
+      expect(capturedRequest!.id, equals('req_xyz'));
+      expect(capturedRequest!.url, equals('http://192.168.1.50:8000/api/v1/auth/session'));
+      expect(capturedRequest!.method, equals('POST'));
+      expect(capturedRequest!.status, equals(200));
+      expect(capturedRequest!.statusText, equals('OK'));
+      expect(capturedRequest!.durationMs, equals(35));
+      expect(capturedRequest!.initiator, equals('fetch'));
+      expect(capturedRequest!.isSuccess, isTrue);
+    });
+
+    test('injectionScript includes network inspector definitions', () {
+      expect(NativeBridgeHandler.injectionScript, contains('emitNetworkEvent'));
+      expect(NativeBridgeHandler.injectionScript, contains('initiator: \'fetch\''));
+      expect(NativeBridgeHandler.injectionScript, contains('initiator: \'xhr\''));
     });
 
     test('ignores malformed or unexpected payloads gracefully', () {
