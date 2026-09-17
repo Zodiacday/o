@@ -17,8 +17,6 @@ void main() {
 
     expect(find.byType(LiquidSidebarSeed), findsOneWidget);
     expect(find.byKey(const Key('liquid_sidebar_seed_lens')), findsOneWidget);
-    expect(find.byKey(const Key('liquid_reload_connector')), findsOneWidget);
-    expect(find.byKey(const Key('liquid_menu_connector')), findsOneWidget);
     expect(find.byType(NativeGlassMorphLab), findsNothing);
   });
 
@@ -44,24 +42,23 @@ void main() {
     expect(after.dy, lessThan(before.dy));
   });
 
-  testWidgets('seed releases reload and menu glass circles', (tester) async {
+  testWidgets('seed tap directly opens centered dev menu card', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const MaterialApp(home: UiLabScreen()));
     await tester.pump();
-    expect(find.byKey(const Key('liquid_reload_circle')), findsNothing);
-    expect(find.byKey(const Key('liquid_menu_circle')), findsNothing);
+    expect(find.byKey(const Key('liquid_menu_title')), findsNothing);
 
     await tester.tap(find.byKey(const Key('liquid_sidebar_seed')));
-    for (var i = 0; i < 30; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
+    for (var i = 0; i < 15; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.byKey(const Key('liquid_reservoir_blender')), findsOneWidget);
-    expect(find.byKey(const Key('liquid_reload_circle')), findsOneWidget);
-    expect(find.byKey(const Key('liquid_menu_circle')), findsOneWidget);
+    expect(find.byKey(const Key('liquid_menu_card_lens')), findsOneWidget);
+    expect(find.byKey(const Key('liquid_menu_title')), findsOneWidget);
+    expect(find.text('HOT RELOAD'), findsOneWidget);
   });
 
   testWidgets('FloatingNavBar excludes Lab and routes standard destinations', (tester) async {
@@ -89,7 +86,7 @@ void main() {
   });
 
   testWidgets(
-    'menu satellite circle morphs into full dev menu card and closes',
+    'centered dev menu card renders all action items and closes via close button',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -98,19 +95,10 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: UiLabScreen()));
       await tester.pump();
 
-      // Open satellites
+      // Open centered menu
       await tester.tap(find.byKey(const Key('liquid_sidebar_seed')));
-      for (var i = 0; i < 30; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-
-      expect(find.byKey(const Key('liquid_menu_circle')), findsOneWidget);
-      expect(find.byKey(const Key('liquid_menu_title')), findsNothing);
-
-      // Tap menu circle to expand into full menu card
-      await tester.tap(find.byKey(const Key('liquid_menu_circle')));
-      for (var i = 0; i < 20; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
+      for (var i = 0; i < 15; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
       }
 
       expect(find.byKey(const Key('liquid_menu_title')), findsOneWidget);
@@ -120,14 +108,13 @@ void main() {
       expect(find.text('TERMINAL'), findsOneWidget);
       expect(find.byKey(const Key('liquid_menu_close_btn')), findsOneWidget);
 
-      // Tap close button to reverse morph
+      // Tap close button to dismiss
       await tester.tap(find.byKey(const Key('liquid_menu_close_btn')));
-      for (var i = 0; i < 20; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
+      for (var i = 0; i < 15; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
       }
 
       expect(find.byKey(const Key('liquid_menu_title')), findsNothing);
-      expect(find.byKey(const Key('liquid_menu_circle')), findsOneWidget);
     },
   );
 
@@ -152,14 +139,10 @@ void main() {
       expect(find.text('CLI OFFLINE'), findsOneWidget);
       expect(find.text('CLI LIVE'), findsNothing);
 
-      // Open satellites & menu card while offline
+      // Open centered menu while offline
       await tester.tap(find.byKey(const Key('liquid_sidebar_seed')));
-      for (var i = 0; i < 30; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
-      }
-      await tester.tap(find.byKey(const Key('liquid_menu_circle')));
-      for (var i = 0; i < 20; i++) {
-        await tester.pump(const Duration(milliseconds: 100));
+      for (var i = 0; i < 15; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
       }
 
       // Hot reload shows OFFLINE badge pill while preserving HOT RELOAD label
@@ -195,21 +178,9 @@ void main() {
       find.byKey(const Key('liquid_sidebar_seed_position')),
     );
     expect(leftPos.dx, equals(12.0)); // _edgeMargin
-
-    // Expand satellites on left side
-    await tester.tap(find.byKey(const Key('liquid_sidebar_seed')));
-    for (var i = 0; i < 30; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-
-    // Satellite centers mirror to left side (_circleInset = 88px)
-    final reloadPos = tester.getCenter(
-      find.byKey(const Key('liquid_reload_circle')),
-    );
-    expect(reloadPos.dx, equals(88.0));
   });
 
-  testWidgets('hot reload satellite triggers hot reload callback and spin', (
+  testWidgets('hot reload action inside menu triggers hot reload callback', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -232,14 +203,14 @@ void main() {
     );
     await tester.pump();
 
-    // Open satellites
+    // Open menu
     await tester.tap(find.byKey(const Key('liquid_sidebar_seed')));
-    for (var i = 0; i < 30; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
+    for (var i = 0; i < 15; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
     }
 
-    expect(find.byKey(const Key('liquid_reload_circle')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('liquid_reload_circle')));
+    expect(find.text('HOT RELOAD'), findsOneWidget);
+    await tester.tap(find.text('HOT RELOAD'));
     await tester.pump();
 
     expect(reloaded, isTrue);

@@ -200,6 +200,34 @@ void main() {
       expect(NativeBridgeHandler.injectionScript, contains('initiator: \'xhr\''));
     });
 
+    test('parses fatal_startup_error events with file and line', () {
+      String? errorMessage;
+      String? errorFile;
+      int? errorLine;
+      final handler = NativeBridgeHandler(
+        onFatalError: (msg, file, line) {
+          errorMessage = msg;
+          errorFile = file;
+          errorLine = line;
+        },
+      );
+
+      handler.handleMessage('{"type":"fatal_startup_error","message":"ReferenceError: process is not defined","file":"http://192.168.1.50:5173/src/main.tsx","line":42}');
+      expect(errorMessage, equals('ReferenceError: process is not defined'));
+      expect(errorFile, contains('main.tsx'));
+      expect(errorLine, equals(42));
+    });
+
+    test('parses blank_screen_detected watchdog events', () {
+      String? blankReason;
+      final handler = NativeBridgeHandler(
+        onBlankScreenDetected: (reason) => blankReason = reason,
+      );
+
+      handler.handleMessage('{"type":"blank_screen_detected","reason":"Zero rendered elements detected after 100% load."}');
+      expect(blankReason, contains('Zero rendered elements'));
+    });
+
     test('ignores malformed or unexpected payloads gracefully', () {
       var triggered = false;
       final handler = NativeBridgeHandler(

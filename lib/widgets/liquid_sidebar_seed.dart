@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
 import 'dev_menu_content.dart';
 
-/// Driver interface for programmatic external control of the liquid seed.
+/// Driver interface for programmatic external control of the dev seed.
 abstract class LiquidDevControlDriver {
   bool get isOpen;
   Future<void> openMenu();
@@ -43,9 +42,10 @@ class LiquidDevControlController extends ChangeNotifier {
   Future<void> toggle() async => _driver?.toggle();
 }
 
-/// One continuous liquid surface:
-/// [Seed] ══tendril 1══> [Reload Circle]
-///        ══tendril 2══> [Menu Circle] ══tendril 3══> [Menu Card]
+/// A clean, minimal developer HUD sidebar handle docked to the bezel edge.
+///
+/// Single-tap opens the complete Dev Menu card directly at the center of the screen
+/// with a smooth scale/fade animation and dark scrim backdrop.
 class LiquidSidebarSeed extends StatefulWidget {
   final LiquidDevControlController? controller;
   final String? title;
@@ -81,49 +81,27 @@ class LiquidSidebarSeed extends StatefulWidget {
 }
 
 class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
-    with TickerProviderStateMixin
+    with SingleTickerProviderStateMixin
     implements LiquidDevControlDriver {
   static const _positionKey = 'liquid_sidebar_seed_dy';
   static const _sideKey = 'liquid_sidebar_seed_is_right';
-  static const _seedSize = Size(24.0, 84.0);
-  static const _circleSize = 52.0;
-  static const _lineHeight = 9.9;
+  static const _seedSize = Size(20.0, 72.0);
   static const _edgeMargin = 12.0;
-  static const _circleInset = 88.0;
-  static const _circleSeparation = 70.0;
 
-  late final AnimationController _morph;
-  late final AnimationController _menuMorph;
-  late final AnimationController _reloadSpin;
+  late final AnimationController _menuAnim;
   Timer? _idleTimer;
   double _dy = 0.65;
   bool _isRightSide = true;
-  bool _open = false;
-  bool _menuOpen = false;
   bool _isIdle = false;
-  bool _pressedReload = false;
-  bool _pressedMenu = false;
-  bool _isReloading = false;
 
   @override
   void initState() {
     super.initState();
     widget.controller?.attach(this);
-    _morph = AnimationController(
+    _menuAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
-      reverseDuration: const Duration(milliseconds: 500),
-    )..addListener(() => setState(() {}));
-
-    _menuMorph = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 440),
-      reverseDuration: const Duration(milliseconds: 360),
-    )..addListener(() => setState(() {}));
-
-    _reloadSpin = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 240),
+      reverseDuration: const Duration(milliseconds: 180),
     )..addListener(() => setState(() {}));
 
     _restorePosition();
@@ -143,69 +121,46 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
   void dispose() {
     widget.controller?.detach(this);
     _idleTimer?.cancel();
-    _reloadSpin.dispose();
-    _menuMorph.dispose();
-    _morph.dispose();
+    _menuAnim.dispose();
     super.dispose();
   }
 
   // --- LiquidDevControlDriver implementation ---
   @override
-  bool get isOpen => _open || _menuOpen;
+  bool get isOpen => _menuAnim.value > 0;
 
   @override
-  Future<void> openSatellites() async {
-    if (_open) return;
-    _idleTimer?.cancel();
-    if (_isIdle) setState(() => _isIdle = false);
-    setState(() => _open = true);
-    unawaited(_morph.forward());
-  }
+  Future<void> openSatellites() async => openMenu();
 
   @override
   Future<void> openMenu() async {
     _idleTimer?.cancel();
     if (_isIdle) setState(() => _isIdle = false);
-    if (!_open) {
-      setState(() => _open = true);
-      _morph.forward();
-    }
-    if (!_menuOpen) {
-      setState(() => _menuOpen = true);
-      unawaited(_menuMorph.forward());
-    }
+    _menuAnim.forward();
   }
 
   @override
   Future<void> dismiss() async {
     _idleTimer?.cancel();
-    if (_menuOpen) {
-      setState(() => _menuOpen = false);
-      _menuMorph.reverse();
-    }
-    if (_open) {
-      setState(() => _open = false);
-      _morph.reverse().then((_) {
-        if (mounted && !_open) _startIdleTimer();
-      });
-    }
+    _menuAnim.reverse();
+    if (mounted) _startIdleTimer();
   }
 
   @override
   Future<void> toggle() async {
-    _toggle();
+    if (_menuAnim.value > 0.5) {
+      dismiss();
+    } else {
+      openMenu();
+    }
   }
   // ----------------------------------------------
 
   void _startIdleTimer() {
     _idleTimer?.cancel();
-    if (!_open && !_menuOpen && mounted) {
+    if (_menuAnim.value == 0 && mounted) {
       _idleTimer = Timer(const Duration(milliseconds: 2500), () {
-        if (mounted &&
-            !_open &&
-            !_menuOpen &&
-            !_morph.isAnimating &&
-            !_menuMorph.isAnimating) {
+        if (mounted && _menuAnim.value == 0) {
           setState(() => _isIdle = true);
         }
       });
@@ -235,62 +190,13 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
   }
 
   void _handleHotReload() {
-    if (_isReloading) return;
     HapticFeedback.mediumImpact();
-    setState(() => _isReloading = true);
-    _reloadSpin.forward(from: 0.0).then((_) {
-      if (mounted) {
-        setState(() => _isReloading = false);
-      }
-    });
     widget.onHotReload?.call();
   }
 
-  void _toggle() {
-    if (_morph.isAnimating || _menuMorph.isAnimating) return;
-    _idleTimer?.cancel();
-    if (_isIdle) setState(() => _isIdle = false);
-
-    if (_menuOpen) {
-      _closeMenuCard();
-      return;
-    }
-
-    HapticFeedback.mediumImpact();
-    setState(() => _open = !_open);
-    if (_open) {
-      _morph.forward();
-    } else {
-      _morph.reverse().then((_) {
-        if (mounted && !_open) _startIdleTimer();
-      });
-    }
-  }
-
-  void _openMenuCard() {
-    if (_menuMorph.isAnimating) return;
-    HapticFeedback.mediumImpact();
-    setState(() => _menuOpen = true);
-    _menuMorph.forward();
-  }
-
-  void _closeMenuCard() {
-    if (_menuMorph.isAnimating) return;
-    HapticFeedback.lightImpact();
-    setState(() => _menuOpen = false);
-    _menuMorph.reverse().then((_) {
-      if (mounted && !_open) _startIdleTimer();
-    });
-  }
-
   void _runAndClose(VoidCallback? action) {
-    _closeMenuCard();
+    dismiss();
     action?.call();
-  }
-
-  double _phase(double value, double begin, double end) {
-    final t = ((value - begin) / (end - begin)).clamp(0.0, 1.0);
-    return Curves.easeInOutCubicEmphasized.transform(t);
   }
 
   @override
@@ -312,467 +218,47 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
       _seedSize.height,
     );
 
-    final targetCenterX =
-        _isRightSide ? mq.size.width - _circleInset : _circleInset;
-    final minCircleCenterY = mq.padding.top + 16 + _circleSize / 2;
-    final maxCircleCenterY =
-        mq.size.height - mq.padding.bottom - 16 - _circleSize / 2;
-
-    final nominalReloadY = seedRect.center.dy - _circleSeparation / 2;
-    final nominalMenuY = seedRect.center.dy + _circleSeparation / 2;
-
-    final reloadTarget = Offset(
-      targetCenterX,
-      nominalReloadY.clamp(
-          minCircleCenterY, maxCircleCenterY - _circleSeparation),
-    );
-    final menuTarget = Offset(
-      targetCenterX,
-      nominalMenuY.clamp(
-          minCircleCenterY + _circleSeparation, maxCircleCenterY),
-    );
-    final reservoirX =
-        _isRightSide ? seedRect.center.dx + 2.0 : seedRect.center.dx - 2.0;
-
-    // ==========================================
-    // Phase 1: Tendrils 1 & 2 (Seed to Satellites)
-    // ==========================================
-    final reloadLineProgress = _phase(_morph.value, 0.00, 0.48);
-    final menuLineProgress = _phase(_morph.value, 0.06, 0.54);
-
-    final reloadCirclePhase = _phase(_morph.value, 0.44, 0.94);
-    final menuCirclePhase = _phase(_morph.value, 0.50, 1.00);
-
-    final reloadBloom = Curves.easeOutBack.transform(reloadCirclePhase);
-    final menuBloom = Curves.easeOutBack.transform(menuCirclePhase);
-
-    final reloadRadius =
-        lerpDouble(_lineHeight / 2, _circleSize / 2, reloadBloom)!;
-    final menuRadius =
-        lerpDouble(_lineHeight / 2, _circleSize / 2, menuBloom)!;
-
-    final reloadPulseScale = _isReloading
-        ? 1.0 + (math.sin(_reloadSpin.value * math.pi) * 0.14)
-        : 1.0;
-    final reloadSize =
-        (reloadRadius * 2) * (_pressedReload ? 0.92 : 1.0) * reloadPulseScale;
-    final menuSize = (menuRadius * 2) * (_pressedMenu ? 0.92 : 1.0);
-
-    final reloadPinch = math.sin(reloadLineProgress * math.pi) * 1.5;
-    final reloadLineHeight = _lineHeight - reloadPinch;
-
-    final menuPinch = math.sin(menuLineProgress * math.pi) * 1.5;
-    final menuLineHeight = _lineHeight - menuPinch;
-
-    final reloadTipX =
-        lerpDouble(reservoirX, targetCenterX, reloadLineProgress)!;
-    final menuTipX =
-        lerpDouble(reservoirX, targetCenterX, menuLineProgress)!;
-
-    final double reloadLineA;
-    final double reloadLineB;
-    if (_isRightSide) {
-      final tip = lerpDouble(
-        reloadTipX,
-        targetCenterX + reloadRadius - 4.0,
-        reloadCirclePhase,
-      )!;
-      reloadLineA = math.min(tip, reservoirX - 0.5);
-      reloadLineB = reservoirX;
-    } else {
-      final tip = lerpDouble(
-        reloadTipX,
-        targetCenterX - reloadRadius + 4.0,
-        reloadCirclePhase,
-      )!;
-      reloadLineA = reservoirX;
-      reloadLineB = math.max(tip, reservoirX + 0.5);
-    }
-
-    final reloadLine = Rect.fromLTRB(
-      reloadLineA,
-      reloadTarget.dy - reloadLineHeight / 2,
-      reloadLineB,
-      reloadTarget.dy + reloadLineHeight / 2,
-    );
-
-    final double menuLineA;
-    final double menuLineB;
-    if (_isRightSide) {
-      final tip = lerpDouble(
-        menuTipX,
-        targetCenterX + menuRadius - 4.0,
-        menuCirclePhase,
-      )!;
-      menuLineA = math.min(tip, reservoirX - 0.5);
-      menuLineB = reservoirX;
-    } else {
-      final tip = lerpDouble(
-        menuTipX,
-        targetCenterX - menuRadius + 4.0,
-        menuCirclePhase,
-      )!;
-      menuLineA = reservoirX;
-      menuLineB = math.max(tip, reservoirX + 0.5);
-    }
-
-    final menuLine = Rect.fromLTRB(
-      menuLineA,
-      menuTarget.dy - menuLineHeight / 2,
-      menuLineB,
-      menuTarget.dy + menuLineHeight / 2,
-    );
-
-    final reloadCircle = Rect.fromCenter(
-      center: Offset(reloadTipX, reloadTarget.dy),
-      width: reloadSize,
-      height: reloadSize,
-    );
-
-    final menuCircle = Rect.fromCenter(
-      center: Offset(menuTipX, menuTarget.dy),
-      width: menuSize,
-      height: menuSize,
-    );
-
-    // ==========================================
-    // Phase 2: Tendril 3 & Adaptive Menu Card Extrusion
-    // ==========================================
-    const menuCardWidth = 150.0;
-    const menuCardHeight = 356.0;
-
-    final cardMinCenterY = topLimit + menuCardHeight / 2;
-    final cardMaxCenterY =
-        (mq.size.height - mq.padding.bottom - 16 - menuCardHeight / 2);
-
-    final menuCardCenterY = (cardMinCenterY <= cardMaxCenterY)
-        ? menuTarget.dy.clamp(cardMinCenterY, cardMaxCenterY)
-        : (topLimit + (mq.size.height - mq.padding.bottom - 16)) / 2;
-
-    final targetCardTop = menuCardCenterY - menuCardHeight / 2;
-    final targetCardBottom = menuCardCenterY + menuCardHeight / 2;
-
-    final lineY =
-        menuTarget.dy.clamp(targetCardTop + 24.0, targetCardBottom - 24.0);
-
-    const connectingLineLength = 28.0;
-
-    // Sub-phase 2a: Tendril 3 shoots outward from Menu Circle (0.00 -> 0.42)
-    final cardLineProgress = _phase(_menuMorph.value, 0.00, 0.42);
-    final cardPinch = math.sin(cardLineProgress * math.pi) * 1.5;
-    final cardLineHeight = _lineHeight - cardPinch;
-
-    final cardBloomProgress = _phase(_menuMorph.value, 0.38, 1.00);
-    final cardBloom = Curves.easeOutBack.transform(cardBloomProgress);
-
-    final currentCardTop =
-        lerpDouble(lineY - _lineHeight / 2, targetCardTop, cardBloom)!;
-    final currentCardBottom =
-        lerpDouble(lineY + _lineHeight / 2, targetCardBottom, cardBloom)!;
-    final currentCardCornerRadius =
-        lerpDouble(_lineHeight / 2, 22.0, cardBloom)!;
-    final currentCardWidth =
-        lerpDouble(_lineHeight, menuCardWidth, cardBloom)!;
-
-    final Rect cardConnectorLine;
-    final double currentCardLeft;
-    final double currentCardRight;
-
-    if (_isRightSide) {
-      final menuCircleLeft = menuTarget.dx - _circleSize / 2;
-      final cardRestingRight = menuCircleLeft - connectingLineLength;
-      final lineOriginX = menuTarget.dx - 12.0;
-      final lineTipX =
-          lerpDouble(lineOriginX, cardRestingRight, cardLineProgress)!;
-
-      cardConnectorLine = Rect.fromLTRB(
-        lineTipX,
-        lineY - cardLineHeight / 2,
-        lineOriginX,
-        lineY + cardLineHeight / 2,
-      );
-
-      currentCardRight =
-          lerpDouble(lineTipX, cardRestingRight + 2.0, cardBloomProgress)!;
-      currentCardLeft = currentCardRight - currentCardWidth;
-    } else {
-      final menuCircleRight = menuTarget.dx + _circleSize / 2;
-      final cardRestingLeft = menuCircleRight + connectingLineLength;
-      final lineOriginX = menuTarget.dx + 12.0;
-      final lineTipX =
-          lerpDouble(lineOriginX, cardRestingLeft, cardLineProgress)!;
-
-      cardConnectorLine = Rect.fromLTRB(
-        lineOriginX,
-        lineY - cardLineHeight / 2,
-        lineTipX,
-        lineY + cardLineHeight / 2,
-      );
-
-      currentCardLeft =
-          lerpDouble(lineTipX, cardRestingLeft - 2.0, cardBloomProgress)!;
-      currentCardRight = currentCardLeft + currentCardWidth;
-    }
-
-    final currentCardRect = Rect.fromLTRB(
-      currentCardLeft,
-      currentCardTop,
-      currentCardRight,
-      currentCardBottom,
-    );
-
-    // Dynamic theme signaling: AppTheme.cyan (connected) vs AppTheme.warning (disconnected)
     final statusColor =
         widget.isCliConnected ? AppTheme.cyan : AppTheme.warning;
 
-    // Content inside the menu card: cross-fades in once card is formed
-    Widget? cardContent;
-    if (_menuMorph.value > 0.55) {
-      final contentOpacity = Curves.easeOut
-          .transform(((_menuMorph.value - 0.55) / 0.45).clamp(0.0, 1.0));
-      cardContent = Opacity(
-        opacity: contentOpacity,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            color: const Color(0xFF0F1420),
-          ),
-          padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              DevMenuContent(
-                title: widget.title,
-                isCliConnected: widget.isCliConnected,
-                terminalLogCount: widget.terminalLogCount,
-                selectedDeviceName: widget.selectedDeviceName,
-                selectedDeviceIcon: widget.selectedDeviceIcon,
-                onHotReload: () {
-                  _handleHotReload();
-                  _closeMenuCard();
-                },
-                onRestart: () => _runAndClose(widget.onRestart),
-                onOpenViewportSwitcher: () =>
-                    _runAndClose(widget.onOpenViewportSwitcher),
-                onOpenTerminal: () => _runAndClose(widget.onOpenTerminal),
-                onClearCache: () => _runAndClose(widget.onClearCache),
-                onExit: () => _runAndClose(widget.onExit),
-              ),
-              Positioned(
-                right: 0,
-                top: -6,
-                child: GestureDetector(
-                  key: const Key('liquid_menu_close_btn'),
-                  onTap: _closeMenuCard,
-                  behavior: HitTestBehavior.opaque,
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(
-                      PhosphorIconsRegular.x,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    final isMenuOpen = _menuAnim.value > 0;
 
     return Positioned.fill(
       child: Stack(
         children: [
-          // Dismiss layer for expanded menu card
-          if (_menuMorph.value > 0)
+          // 1. Dark Backdrop Scrim (Dismiss layer on tap)
+          if (isMenuOpen)
             Positioned.fill(
               child: GestureDetector(
                 key: const Key('native_glass_dismiss_layer'),
                 behavior: HitTestBehavior.opaque,
-                onTap: _closeMenuCard,
+                onTap: dismiss,
                 child: ColoredBox(
-                  color: Colors.black
-                      .withValues(alpha: 0.38 * _menuMorph.value),
+                  color: Colors.black.withValues(alpha: 0.55 * _menuAnim.value),
                 ),
               ),
             ),
 
-          // Dismiss layer for satellite mode
-          if (_morph.value > 0 && _menuMorph.value == 0)
-            Positioned.fill(
-              child: GestureDetector(
-                key: const Key('liquid_satellite_dismiss_layer'),
-                behavior: HitTestBehavior.opaque,
-                onTap: _open && !_morph.isAnimating ? _toggle : null,
-              ),
-            ),
-
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeInOut,
-            opacity: (_isIdle &&
-                    !_open &&
-                    !_menuOpen &&
-                    _morph.value == 0)
-                ? 0.70
-                : 1.0,
-            child: KeyedSubtree(
-              key: const Key('liquid_reservoir_blender'),
-              child: Stack(
-                children: [
-                  // 1. Seed handle (solid dark container with luminous status core)
-                  _lens(
-                    seedRect,
-                    const Key('liquid_sidebar_seed_lens'),
-                    borderRadius: _isRightSide
-                        ? const BorderRadius.horizontal(left: Radius.circular(16))
-                        : const BorderRadius.horizontal(right: Radius.circular(16)),
-                    backgroundColor: const Color(0xFF0C1017),
-                    border: Border.all(color: statusColor, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                      ),
-                    ],
-                    content: Center(
-                      child: Container(
-                        width: 3.5,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          borderRadius: BorderRadius.circular(2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: statusColor.withValues(alpha: 0.85),
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                      ),
+          // 2. Centered Dev Menu Card Modal
+          if (isMenuOpen)
+            Center(
+              child: Transform.scale(
+                scale: 0.88 +
+                    (0.12 * Curves.easeOutBack.transform(_menuAnim.value)),
+                child: Opacity(
+                  opacity: _menuAnim.value.clamp(0.0, 1.0),
+                  child: Container(
+                    key: const Key('liquid_menu_card_lens'),
+                    width: math.min(mq.size.width - 40.0, 330.0),
+                    constraints: BoxConstraints(
+                      maxHeight: mq.size.height -
+                          mq.padding.top -
+                          mq.padding.bottom -
+                          48.0,
                     ),
-                  ),
-
-                  // 2. Connector line 1 (Seed -> Reload)
-                  _lens(
-                    reloadLine,
-                    const Key('liquid_reload_connector'),
-                    backgroundColor: statusColor,
-                    borderRadius: BorderRadius.circular(1.5),
-                    border: Border.all(color: Colors.transparent, width: 0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.6),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-
-                  // 3. Connector line 2 (Seed -> Menu)
-                  _lens(
-                    menuLine,
-                    const Key('liquid_menu_connector'),
-                    backgroundColor: statusColor,
-                    borderRadius: BorderRadius.circular(1.5),
-                    border: Border.all(color: Colors.transparent, width: 0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.6),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-
-                  // 4. Reload satellite circle
-                  _lens(
-                    reloadCircle,
-                    const Key('liquid_reload_lens'),
-                    isCircle: true,
-                    backgroundColor: _pressedReload
-                        ? const Color(0xFF1C2536)
-                        : const Color(0xFF10141E),
-                    border: Border.all(color: statusColor, width: 2.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                      ),
-                    ],
-                    content: Opacity(
-                      opacity: _phase(reloadCirclePhase, 0.65, 1.0),
-                      child: Center(
-                        child: Transform.rotate(
-                          angle: _reloadSpin.value * 2 * math.pi,
-                          child: Icon(
-                            PhosphorIconsRegular.arrowClockwise,
-                            color: statusColor,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 5. Menu satellite circle
-                  _lens(
-                    menuCircle,
-                    const Key('liquid_menu_lens'),
-                    isCircle: true,
-                    backgroundColor: _pressedMenu
-                        ? const Color(0xFF1C2536)
-                        : const Color(0xFF10141E),
-                    border: Border.all(color: statusColor, width: 2.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                      ),
-                    ],
-                    icon: PhosphorIconsRegular.slidersHorizontal,
-                    iconOpacity: menuCirclePhase,
-                    iconColor: statusColor,
-                  ),
-
-                  // 6. Connector line 3 (Menu Circle -> Menu Card)
-                  if (_menuMorph.value > 0)
-                    _lens(
-                      cardConnectorLine,
-                      const Key('liquid_menu_card_connector'),
-                      backgroundColor: statusColor,
-                      borderRadius: BorderRadius.circular(1.5),
-                      border: Border.all(color: Colors.transparent, width: 0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: statusColor.withValues(alpha: 0.6),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-
-                  // 7. Full Menu Card (Blooms at the tip of Line 3)
-                  if (_menuMorph.value > 0)
-                    _lens(
-                      currentCardRect,
-                      const Key('liquid_menu_card_lens'),
-                      borderRadius:
-                          BorderRadius.circular(currentCardCornerRadius),
-                      backgroundColor: const Color(0xFF0F1420),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F1420),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: statusColor.withValues(alpha: 0.55),
                         width: 1.5,
@@ -780,80 +266,149 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.85),
-                          blurRadius: 32,
+                          blurRadius: 36,
                           spreadRadius: 4,
                           offset: const Offset(0, 8),
                         ),
                         BoxShadow(
                           color: statusColor.withValues(alpha: 0.22),
-                          blurRadius: 16,
+                          blurRadius: 18,
                         ),
                       ],
-                      content: ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(currentCardCornerRadius),
-                        child: cardContent,
-                      ),
                     ),
-                ],
+                    padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        DevMenuContent(
+                          title: widget.title,
+                          isCliConnected: widget.isCliConnected,
+                          terminalLogCount: widget.terminalLogCount,
+                          selectedDeviceName: widget.selectedDeviceName,
+                          selectedDeviceIcon: widget.selectedDeviceIcon,
+                          onHotReload: () {
+                            _handleHotReload();
+                            dismiss();
+                          },
+                          onRestart: () => _runAndClose(widget.onRestart),
+                          onOpenViewportSwitcher: () =>
+                              _runAndClose(widget.onOpenViewportSwitcher),
+                          onOpenTerminal: () =>
+                              _runAndClose(widget.onOpenTerminal),
+                          onClearCache: () => _runAndClose(widget.onClearCache),
+                          onExit: () => _runAndClose(widget.onExit),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: -6,
+                          child: GestureDetector(
+                            key: const Key('liquid_menu_close_btn'),
+                            onTap: dismiss,
+                            behavior: HitTestBehavior.opaque,
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(
+                                PhosphorIconsRegular.x,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // 3. Sidebar Seed Handle (Docked to screen edge)
+          Positioned.fromRect(
+            key: const Key('liquid_sidebar_seed_lens'),
+            rect: seedRect,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 250),
+              opacity: (_isIdle && !isMenuOpen) ? 0.60 : 1.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C1017),
+                  borderRadius: _isRightSide
+                      ? const BorderRadius.horizontal(
+                          left: Radius.circular(16),
+                        )
+                      : const BorderRadius.horizontal(
+                          right: Radius.circular(16),
+                        ),
+                  border: Border.all(
+                    color: statusColor,
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                    BoxShadow(
+                      color: statusColor.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Container(
+                    width: 3.5,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: statusColor.withValues(alpha: 0.85),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
 
-          // Tap and drag detector on the floating seed
-          if (_menuMorph.value == 0)
+          // 4. Tap and drag detector on the sidebar handle
+          if (!isMenuOpen)
             Positioned.fromRect(
               rect: seedRect.inflate(8),
               child: GestureDetector(
                 key: const Key('liquid_sidebar_seed'),
                 behavior: HitTestBehavior.opaque,
-                onTap: _toggle,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  openMenu();
+                },
                 onPanStart: (_) => _wakeUp(),
-                onPanUpdate: _morph.value > 0
-                    ? null
-                    : (details) {
-                        _wakeUp();
-                        if (travel <= 0) return;
-                        setState(() {
-                          _dy = (_dy + details.delta.dy / travel).clamp(0, 1);
-                          if (details.globalPosition.dx <
-                              mq.size.width * 0.4) {
-                            _isRightSide = false;
-                          } else if (details.globalPosition.dx >
-                              mq.size.width * 0.6) {
-                            _isRightSide = true;
-                          }
-                        });
-                      },
-                onPanEnd: _morph.value > 0
-                    ? null
-                    : (_) {
-                        _wakeUp();
-                        HapticFeedback.lightImpact();
-                        _savePosition();
-                      },
+                onPanUpdate: (details) {
+                  _wakeUp();
+                  if (travel <= 0) return;
+                  setState(() {
+                    _dy = (_dy + details.delta.dy / travel).clamp(0, 1);
+                    if (details.globalPosition.dx < mq.size.width * 0.4) {
+                      _isRightSide = false;
+                    } else if (details.globalPosition.dx >
+                        mq.size.width * 0.6) {
+                      _isRightSide = true;
+                    }
+                  });
+                },
+                onPanEnd: (_) {
+                  _wakeUp();
+                  HapticFeedback.lightImpact();
+                  _savePosition();
+                },
               ),
             ),
 
-          // Hit targets for the satellite circles
-          if (_open && !_morph.isAnimating && _menuMorph.value == 0) ...[
-            _hit(
-              reloadCircle,
-              const Key('liquid_reload_circle'),
-              () {
-                _handleHotReload();
-                _toggle();
-              },
-              onHighlight: (val) => setState(() => _pressedReload = val),
-            ),
-            _hit(
-              menuCircle,
-              const Key('liquid_menu_circle'),
-              _openMenuCard,
-              onHighlight: (val) => setState(() => _pressedMenu = val),
-            ),
-          ],
-
+          // Position tracking key for automated tests
           Positioned.fromRect(
             key: const Key('liquid_sidebar_seed_position'),
             rect: seedRect,
@@ -863,77 +418,4 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
       ),
     );
   }
-
-  Widget _lens(
-    Rect rect,
-    Key key, {
-    BorderRadius? borderRadius,
-    bool isCircle = false,
-    Widget? content,
-    IconData? icon,
-    double iconOpacity = 0,
-    Color? iconColor,
-    Color? backgroundColor,
-    Border? border,
-    List<BoxShadow>? boxShadow,
-  }) {
-    final statusColor =
-        widget.isCliConnected ? AppTheme.cyan : AppTheme.warning;
-
-    return Positioned.fromRect(
-      key: key,
-      rect: rect,
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor ?? const Color(0xFF10141E),
-          shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius:
-              isCircle ? null : (borderRadius ?? BorderRadius.circular(16)),
-          border: border ?? Border.all(color: statusColor, width: 1.5),
-          boxShadow: boxShadow ??
-              [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.65),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-        ),
-        child: content ??
-            (icon == null
-                ? const SizedBox.expand()
-                : Opacity(
-                    opacity: _phase(iconOpacity, 0.65, 1.0),
-                    child: Center(
-                      child: Icon(
-                        icon,
-                        color: iconColor ?? statusColor,
-                        size: 20,
-                      ),
-                    ),
-                  )),
-      ),
-    );
-  }
-
-  Widget _hit(
-    Rect rect,
-    Key key,
-    VoidCallback tap, {
-    required ValueChanged<bool> onHighlight,
-  }) =>
-      Positioned.fromRect(
-        key: key,
-        rect: rect,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapDown: (_) {
-            HapticFeedback.lightImpact();
-            onHighlight(true);
-          },
-          onTapUp: (_) => onHighlight(false),
-          onTapCancel: () => onHighlight(false),
-          onTap: tap,
-        ),
-      );
 }

@@ -16,6 +16,8 @@ class NativeBridgeHandler {
   final void Function()? onPageReady;
   final void Function(String message, String level)? onConsoleLog;
   final void Function(NetworkRequestEntry request)? onNetworkRequest;
+  final void Function(String message, String? file, int? line)? onFatalError;
+  final void Function(String reason)? onBlankScreenDetected;
 
   const NativeBridgeHandler({
     this.onTitleChanged,
@@ -25,6 +27,8 @@ class NativeBridgeHandler {
     this.onPageReady,
     this.onConsoleLog,
     this.onNetworkRequest,
+    this.onFatalError,
+    this.onBlankScreenDetected,
   });
 
   /// Generates the complete Expo-compatible and PreviewPort injection script
@@ -191,6 +195,14 @@ class NativeBridgeHandler {
           final entry = NetworkRequestEntry.fromJson(reqMap);
           onNetworkRequest?.call(entry);
         }
+      } else if (type == 'fatal_startup_error') {
+        final message = data['message'] as String? ?? 'Fatal startup error';
+        final file = data['file'] as String?;
+        final line = data['line'] as int?;
+        onFatalError?.call(message, file, line);
+      } else if (type == 'blank_screen_detected') {
+        final reason = data['reason'] as String? ?? 'Blank screen detected';
+        onBlankScreenDetected?.call(reason);
       }
     } catch (_) {
       // Ignore malformed payloads from untrusted web pages

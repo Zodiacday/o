@@ -17,12 +17,12 @@ const String nativeBridgeCoreScript = r'''
     }
   } catch (e) {}
 
-  // 2. Native momentum scrolling styles & eliminate WebKit 300ms tap delay
+  // 2. Native momentum scrolling styles & eliminate WebKit 300ms tap delay & prevent 0-height collapse
   try {
     if (!document.getElementById('__previewport_native_styles')) {
       var style = document.createElement('style');
       style.id = '__previewport_native_styles';
-      style.textContent = 'html, body, #root, flt-glass-pane, flutter-view, [data-v-app] { overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }';
+      style.textContent = 'html, body, #root, #__next, flt-glass-pane, flutter-view, [data-v-app] { min-height: 100vh; overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }';
       if (document.head) document.head.appendChild(style);
     }
   } catch (e) {}
@@ -549,6 +549,72 @@ const String nativeBridgeCoreScript = r'''
         return prevXhrSend.apply(this, arguments);
       };
     }
+  } catch (e) {}
+
+  // 11. Global JavaScript & Promise Error Catcher
+  try {
+    window.addEventListener('error', function(e) {
+      if (!window.PreviewPortNativeBridge) return;
+      try {
+        var msg = e.message || 'Unknown JavaScript Error';
+        var src = e.filename || '';
+        var line = e.lineno || 0;
+        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+          type: 'fatal_startup_error',
+          message: msg,
+          file: src,
+          line: line
+        }));
+      } catch (_) {}
+    });
+
+    window.addEventListener('unhandledrejection', function(e) {
+      if (!window.PreviewPortNativeBridge) return;
+      try {
+        var reason = e.reason;
+        var msg = 'Unhandled Promise Rejection';
+        if (typeof reason === 'string') {
+          msg = reason;
+        } else if (reason && reason.message) {
+          msg = reason.message;
+        } else if (reason && reason.toString) {
+          msg = reason.toString();
+        }
+        window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+          type: 'fatal_startup_error',
+          message: msg
+        }));
+      } catch (_) {}
+    });
+  } catch (e) {}
+
+  // 12. Blank Screen / Zero-Render Watchdog (2.2s check)
+  try {
+    setTimeout(function() {
+      if (!window.PreviewPortNativeBridge) return;
+      try {
+        var hasRenderedContent = false;
+        if (document.body) {
+          var text = (document.body.innerText || document.body.textContent || '').trim();
+          if (text.length > 0) {
+            hasRenderedContent = true;
+          } else {
+            var visualElements = document.querySelectorAll(
+              'canvas, img, svg, video, button, input, textarea, select, iframe, flt-glass-pane, flutter-view, [data-v-app], #root > *, #__next > *'
+            );
+            if (visualElements && visualElements.length > 0) {
+              hasRenderedContent = true;
+            }
+          }
+        }
+        if (!hasRenderedContent) {
+          window.PreviewPortNativeBridge.postMessage(JSON.stringify({
+            type: 'blank_screen_detected',
+            reason: 'Zero rendered elements detected after 100% load. Your HTML downloaded, but the client JavaScript framework produced no visible UI.'
+          }));
+        }
+      } catch (_) {}
+    }, 2200);
   } catch (e) {}
 })();
 ''';

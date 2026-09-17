@@ -138,6 +138,48 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           if (_networkRequests.length > 250) _networkRequests.removeAt(0);
         });
       },
+      onFatalError: (message, file, line) {
+        if (!mounted) return;
+        final location = (file != null && file.isNotEmpty)
+            ? ' at ${file.split('/').last}${line != null ? ':$line' : ''}'
+            : '';
+        final fullMsg = '$message$location';
+        setState(() {
+          _terminalLogs.add(
+            TerminalLogEntry(
+              id: '${DateTime.now().microsecondsSinceEpoch}',
+              message: '💥 [Fatal Startup Error] $fullMsg',
+              level: 'error',
+              source: 'web',
+            ),
+          );
+          if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
+        });
+        _showDiagnostic(
+          PreviewDiagnostic.localError(
+            message: 'Blank Screen Prevented: Uncaught error during startup:\n$fullMsg\n\nCheck Mini-Terminal for the full trace.',
+          ),
+        );
+      },
+      onBlankScreenDetected: (reason) {
+        if (!mounted || _hasError) return;
+        setState(() {
+          _terminalLogs.add(
+            TerminalLogEntry(
+              id: '${DateTime.now().microsecondsSinceEpoch}',
+              message: '⚠️ [Watchdog] $reason',
+              level: 'error',
+              source: 'watchdog',
+            ),
+          );
+          if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
+        });
+        _showDiagnostic(
+          PreviewDiagnostic.localError(
+            message: 'Blank Screen Detected: Zero visible elements painted.\n\nYour HTML finished loading (100%), but your client framework did not render any UI. Check the Mini-Terminal for console errors or broken network requests.',
+          ),
+        );
+      },
     );
     _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
     _shakeDetector.start();
