@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import '../models/session_item.dart';
 import '../models/camera_capture_result.dart';
 import '../models/nearby_preview.dart';
@@ -40,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final NearbyPreviewDiscoveryService _nearbyDiscovery;
   List<NearbyPreview> _nearbyPreviews = const [];
   bool _appIsActive = true;
-  WebViewController? _prewarmedController;
   static final List<List<int>> _gridSquares = [
     [1, 2], [3, 5], [7, 2], [8, 3], [10, 4],
     [2, 7], [4, 9], [6, 12], [8, 14], [3, 15],
@@ -76,19 +74,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _loadHistory();
     unawaited(_syncNearbyDiscovery());
-    _prewarmWebView();
-  }
-
-  void _prewarmWebView() {
-    if (kIsWeb) return;
-    try {
-      _prewarmedController = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(const Color(0xFF000000));
-      unawaited(_prewarmedController!.loadRequest(Uri.parse('about:blank')));
-    } catch (_) {
-      _prewarmedController = null;
-    }
   }
 
   Future<void> _syncNearbyDiscovery() async {
@@ -169,9 +154,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String? title,
     String? controlUrl,
   }) async {
-    final preloaded = _prewarmedController;
-    _prewarmedController = null;
-
     unawaited(
       HistoryService.saveSession(url, title: title, controlUrl: controlUrl),
     );
@@ -184,7 +166,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           url: url,
           title: title,
           controlUrl: controlUrl,
-          preloadedController: preloaded,
         ),
       ),
     );
@@ -192,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) {
       _loadHistory();
       unawaited(_syncNearbyDiscovery());
-      _prewarmWebView();
     }
   }
 
@@ -394,7 +374,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _prewarmedController = null;
     WidgetsBinding.instance.removeObserver(this);
     _scanScrollController.dispose();
     unawaited(_nearbyDiscovery.dispose());

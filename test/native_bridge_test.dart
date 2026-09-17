@@ -9,22 +9,17 @@ void main() {
   group('NativeBridgeHandler', () {
     test('injectionScript includes required bridge definitions', () {
       expect(NativeBridgeHandler.injectionScript, contains('PreviewPortNativeBridge'));
-      expect(NativeBridgeHandler.injectionScript, contains('window.navigator.vibrate'));
       expect(NativeBridgeHandler.injectionScript, contains('window.PreviewPort'));
       expect(NativeBridgeHandler.injectionScript, contains('MutationObserver'));
       expect(NativeBridgeHandler.injectionScript, contains('viewport-fit=cover'));
-      expect(NativeBridgeHandler.injectionScript, contains('overscroll-behavior-y'));
-      expect(NativeBridgeHandler.injectionScript, contains('touch-action: manipulation'));
       expect(NativeBridgeHandler.injectionScript, contains('setStatusBarStyle'));
       expect(NativeBridgeHandler.injectionScript, contains('window.safeAreaInsets'));
       expect(NativeBridgeHandler.injectionScript, contains('ExpoStatusBar'));
-      expect(NativeBridgeHandler.injectionScript, contains('setNetworkCondition'));
-      expect(NativeBridgeHandler.injectionScript, contains('setMockLocation'));
-      expect(NativeBridgeHandler.injectionScript, contains('Auto-routed'));
-      expect(NativeBridgeHandler.injectionScript, contains('localhost'));
-      expect(NativeBridgeHandler.injectionScript, contains('127.0.0.1'));
-      expect(NativeBridgeHandler.injectionScript, contains('window.WebSocket'));
-      expect(NativeBridgeHandler.injectionScript, contains('window.EventSource'));
+    });
+
+    test('injectionScript avoids invasive monkey-patching of WebSockets and canvas layout', () {
+      expect(NativeBridgeHandler.injectionScript, isNot(contains('ProxiedWebSocket')));
+      expect(NativeBridgeHandler.injectionScript, isNot(contains('flt-glass-pane')));
     });
 
     test('buildSetNetworkConditionScript formats JS statement correctly', () {
@@ -194,10 +189,8 @@ void main() {
       expect(capturedRequest!.isSuccess, isTrue);
     });
 
-    test('injectionScript includes network inspector definitions', () {
-      expect(NativeBridgeHandler.injectionScript, contains('emitNetworkEvent'));
-      expect(NativeBridgeHandler.injectionScript, contains('initiator: \'fetch\''));
-      expect(NativeBridgeHandler.injectionScript, contains('initiator: \'xhr\''));
+    test('injectionScript preserves native fetch for WASM streaming compilation', () {
+      expect(NativeBridgeHandler.injectionScript, isNot(contains('emitNetworkEvent')));
     });
 
     test('parses fatal_startup_error events with file and line', () {

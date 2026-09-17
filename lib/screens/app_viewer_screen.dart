@@ -30,14 +30,12 @@ class AppViewerScreen extends StatefulWidget {
   final String url;
   final String? title;
   final String? controlUrl;
-  final WebViewController? preloadedController;
 
   const AppViewerScreen({
     super.key,
     required this.url,
     this.title,
     this.controlUrl,
-    this.preloadedController,
   });
 
   @override
@@ -46,7 +44,7 @@ class AppViewerScreen extends StatefulWidget {
 
 class _AppViewerScreenState extends State<AppViewerScreen>
     with WidgetsBindingObserver {
-  static const _minimumLoadingDisplay = Duration(milliseconds: 200);
+  static const _minimumLoadingDisplay = Duration(milliseconds: 900);
 
   late final WebViewController _controller;
   late final NativeBridgeHandler _nativeBridge;
@@ -110,11 +108,6 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           try {
             _controller.setBackgroundColor(color);
           } catch (_) {}
-        }
-      },
-      onPageReady: () {
-        if (mounted) {
-          _signalPageReady();
         }
       },
       onConsoleLog: (message, level) {
@@ -217,8 +210,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   }
 
   void _initializeWebView() {
-    _controller = widget.preloadedController ?? WebViewController();
-    _controller
+    _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(AppTheme.background)
       ..addJavaScriptChannel(
@@ -254,7 +246,6 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             _diagnosticsChannel?.reportProgress(_loadingProgress);
           },
           onPageStarted: (_) {
-            _injectBridge();
             if (mounted) {
               _loadingCompletionTimer?.cancel();
               _loadingStartedAt = DateTime.now();
