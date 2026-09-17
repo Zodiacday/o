@@ -587,34 +587,5 @@ const String nativeBridgeCoreScript = r'''
       } catch (_) {}
     });
   } catch (e) {}
-
-  // 12. Blank Screen / Zero-Render Watchdog (2.2s check)
-  try {
-    setTimeout(function() {
-      if (!window.PreviewPortNativeBridge) return;
-      try {
-        var hasRenderedContent = false;
-        if (document.body) {
-          var text = (document.body.innerText || document.body.textContent || '').trim();
-          if (text.length > 0) {
-            hasRenderedContent = true;
-          } else {
-            var visualElements = document.querySelectorAll(
-              'canvas, img, svg, video, button, input, textarea, select, iframe, flt-glass-pane, flutter-view, [data-v-app], #root > *, #__next > *'
-            );
-            if (visualElements && visualElements.length > 0) {
-              hasRenderedContent = true;
-            }
-          }
-        }
-        if (!hasRenderedContent) {
-          window.PreviewPortNativeBridge.postMessage(JSON.stringify({
-            type: 'blank_screen_detected',
-            reason: 'Zero rendered elements detected after 100% load. Your HTML downloaded, but the client JavaScript framework produced no visible UI.'
-          }));
-        }
-      } catch (_) {}
-    }, 2200);
-  } catch (e) {}
 })();
 ''';

@@ -67,7 +67,9 @@ class NativeCameraService {
     BuildContext context,
     String path,
   ) async {
-    final controller = MobileScannerController();
+    final controller = MobileScannerController(
+      formats: const [BarcodeFormat.qrCode],
+    );
 
     try {
       final BarcodeCapture? capture = await controller.analyzeImage(path);

@@ -155,11 +155,6 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           );
           if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
         });
-        _showDiagnostic(
-          PreviewDiagnostic.localError(
-            message: 'Blank Screen Prevented: Uncaught error during startup:\n$fullMsg\n\nCheck Mini-Terminal for the full trace.',
-          ),
-        );
       },
       onBlankScreenDetected: (reason) {
         if (!mounted || _hasError) return;
@@ -174,11 +169,6 @@ class _AppViewerScreenState extends State<AppViewerScreen>
           );
           if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
         });
-        _showDiagnostic(
-          PreviewDiagnostic.localError(
-            message: 'Blank Screen Detected: Zero visible elements painted.\n\nYour HTML finished loading (100%), but your client framework did not render any UI. Check the Mini-Terminal for console errors or broken network requests.',
-          ),
-        );
       },
     );
     _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
@@ -239,8 +229,22 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       )
       // Preserve the platform browser identity for Flutter engine detection.
       ..setOnConsoleMessage((message) {
-        if (!mounted || message.level != JavaScriptLogLevel.error) return;
-        _showDiagnostic(PreviewDiagnostic.localError(message: message.message));
+        if (!mounted) return;
+        setState(() {
+          _terminalLogs.add(
+            TerminalLogEntry(
+              id: '${DateTime.now().microsecondsSinceEpoch}',
+              message: message.message,
+              level: message.level == JavaScriptLogLevel.error
+                  ? 'error'
+                  : message.level == JavaScriptLogLevel.warning
+                      ? 'warn'
+                      : 'info',
+              source: 'console',
+            ),
+          );
+          if (_terminalLogs.length > 250) _terminalLogs.removeAt(0);
+        });
       })
       ..setNavigationDelegate(
         NavigationDelegate(

@@ -116,7 +116,9 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
 
   MobileScannerController _createScannerController() {
     return MobileScannerController(
-      detectionSpeed: DetectionSpeed.noDuplicates,
+      detectionSpeed: DetectionSpeed.normal,
+      detectionTimeoutMs: 250,
+      formats: const [BarcodeFormat.qrCode],
       facing: CameraFacing.back,
     );
   }
