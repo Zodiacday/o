@@ -59,7 +59,6 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   PreviewDiagnostic? _diagnostic;
   bool _errorDismissed = false;
   late final LiquidDevControlController _liquidMenuController;
-  final bool _useSafeArea = true;
   bool _isDarkContent = true;
   Color? _appBackgroundColor;
   final bool _showFloatingCapsule = true;
@@ -308,8 +307,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       final native = _nativeDevice;
       final rawTop = native?.topInset ?? insets.top;
       final rawBottom = native?.bottomInset ?? insets.bottom;
-      topInset = _useSafeArea ? 0.0 : rawTop;
-      bottomInset = _useSafeArea ? 0.0 : rawBottom;
+      topInset = rawTop;
+      bottomInset = rawBottom;
       leftInset = insets.left;
       rightInset = insets.right;
       width = native?.width ?? size.width;
@@ -383,8 +382,8 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       final native = _nativeDevice;
       final rawTop = native?.topInset ?? mq.padding.top;
       final rawBottom = native?.bottomInset ?? mq.padding.bottom;
-      top = _useSafeArea ? 0.0 : rawTop;
-      bottom = _useSafeArea ? 0.0 : rawBottom;
+      top = rawTop;
+      bottom = rawBottom;
       left = mq.padding.left;
       right = mq.padding.right;
     } else {
@@ -580,15 +579,10 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     if (isNative) {
       final effectiveBg = _appBackgroundColor ??
           (_isDarkContent ? AppTheme.background : Colors.white);
-      final topPad = _useSafeArea ? mq.padding.top : 0.0;
-      final bottomPad = _useSafeArea ? mq.padding.bottom : 0.0;
 
       return ColoredBox(
         color: effectiveBg,
-        child: Padding(
-          padding: EdgeInsets.only(top: topPad, bottom: bottomPad),
-          child: WebViewWidget(controller: _controller),
-        ),
+        child: WebViewWidget(controller: _controller),
       );
     }
 

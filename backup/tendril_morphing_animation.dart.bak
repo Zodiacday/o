@@ -4,6 +4,7 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -91,6 +92,7 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
   static const _edgeMargin = 12.0;
   static const _circleInset = 88.0;
   static const _circleSeparation = 70.0;
+  static const _blenderSmoothness = 14.0;
 
   late final AnimationController _morph;
   late final AnimationController _menuMorph;
@@ -109,6 +111,7 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
   void initState() {
     super.initState();
     widget.controller?.attach(this);
+    unawaited(LiquidGlassShaders.ensureLoaded());
     _morph = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -524,8 +527,14 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
     // Dynamic theme signaling: AppTheme.cyan (connected) vs AppTheme.warning (disconnected)
     final statusColor =
         widget.isCliConnected ? AppTheme.cyan : AppTheme.warning;
+    final glassColor = widget.isCliConnected
+        ? AppTheme.cyan.withValues(alpha: 0.35)
+        : AppTheme.warning.withValues(alpha: 0.35);
+    final rimLightColor = widget.isCliConnected
+        ? Color.lerp(Colors.white, AppTheme.cyan, 0.40)!
+        : Color.lerp(Colors.white, AppTheme.warning, 0.45)!;
 
-    // Content inside the menu card: cross-fades in once card is formed
+    // Content inside the menu card lens: cross-fades in once card is formed
     Widget? cardContent;
     if (_menuMorph.value > 0.55) {
       final contentOpacity = Curves.easeOut
@@ -535,7 +544,19 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
-            color: const Color(0xFF0F1420),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: widget.isCliConnected
+                  ? const [
+                      Color(0x2800E5FF),
+                      Color(0x45081E32),
+                    ]
+                  : const [
+                      Color(0x28F59E0B),
+                      Color(0x45281808),
+                    ],
+            ),
           ),
           padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
           child: Stack(
@@ -617,44 +638,54 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                     _morph.value == 0)
                 ? 0.70
                 : 1.0,
-            child: KeyedSubtree(
+            child: LiquidGlassBlender(
               key: const Key('liquid_reservoir_blender'),
+              smoothness: _blenderSmoothness,
+              style: LiquidGlassStyle(
+                shape: LiquidGlassShape.continuousRoundedRectangle(
+                  lightDirection: 135.0,
+                  lightIntensity: 1.7,
+                  lightColor: rimLightColor,
+                  borderWidth: 1.4,
+                ),
+                appearance: LiquidGlassAppearance(
+                  blur: const LiquidGlassBlur(sigmaX: 20.0, sigmaY: 20.0),
+                  saturation: widget.isCliConnected ? 1.25 : 1.10,
+                  color: glassColor,
+                ),
+                refraction: const LiquidGlassRefraction(
+                  magnification: 1.05,
+                  chromaticAberration: 0.024,
+                ),
+              ),
               child: Stack(
                 children: [
-                  // 1. Seed handle (solid dark container with luminous status core)
+                  // 1. Seed lens (painted with luminous fluid core)
                   _lens(
                     seedRect,
                     const Key('liquid_sidebar_seed_lens'),
-                    borderRadius: _isRightSide
-                        ? const BorderRadius.horizontal(left: Radius.circular(16))
-                        : const BorderRadius.horizontal(right: Radius.circular(16)),
-                    backgroundColor: const Color(0xFF0C1017),
-                    border: Border.all(color: statusColor, width: 1.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                      ),
-                    ],
-                    content: Center(
-                      child: Container(
-                        width: 3.5,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          borderRadius: BorderRadius.circular(2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: statusColor.withValues(alpha: 0.85),
-                              blurRadius: 6,
-                            ),
+                    shape: LiquidGlassShape.roundedRectangle(
+                      cornerRadius: 50.0,
+                      lightColor: rimLightColor,
+                    ),
+                    content: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(50.0),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            statusColor.withValues(alpha: 0.90),
+                            statusColor.withValues(alpha: 0.55),
                           ],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusColor.withValues(alpha: 0.45),
+                            blurRadius: 10,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -663,52 +694,33 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                   _lens(
                     reloadLine,
                     const Key('liquid_reload_connector'),
-                    backgroundColor: statusColor,
-                    borderRadius: BorderRadius.circular(1.5),
-                    border: Border.all(color: Colors.transparent, width: 0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.6),
-                        blurRadius: 4,
-                      ),
-                    ],
+                    shape: LiquidGlassShape.roundedRectangle(
+                      cornerRadius: 0,
+                      lightColor: rimLightColor,
+                    ),
                   ),
 
                   // 3. Connector line 2 (Seed -> Menu)
                   _lens(
                     menuLine,
                     const Key('liquid_menu_connector'),
-                    backgroundColor: statusColor,
-                    borderRadius: BorderRadius.circular(1.5),
-                    border: Border.all(color: Colors.transparent, width: 0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.6),
-                        blurRadius: 4,
-                      ),
-                    ],
+                    shape: LiquidGlassShape.roundedRectangle(
+                      cornerRadius: 0,
+                      lightColor: rimLightColor,
+                    ),
                   ),
 
                   // 4. Reload satellite circle
                   _lens(
                     reloadCircle,
                     const Key('liquid_reload_lens'),
-                    isCircle: true,
-                    backgroundColor: _pressedReload
-                        ? const Color(0xFF1C2536)
-                        : const Color(0xFF10141E),
-                    border: Border.all(color: statusColor, width: 2.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    shape: LiquidGlassShape.continuousRoundedRectangle(
+                      cornerRadius: 26,
+                      lightColor: rimLightColor,
+                      lightIntensity: _isReloading
+                          ? 1.7 + (math.sin(_reloadSpin.value * math.pi) * 1.1)
+                          : 1.7,
+                    ),
                     content: Opacity(
                       opacity: _phase(reloadCirclePhase, 0.65, 1.0),
                       child: Center(
@@ -717,7 +729,7 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                           child: Icon(
                             PhosphorIconsRegular.arrowClockwise,
                             color: statusColor,
-                            size: 20,
+                            size: 19,
                           ),
                         ),
                       ),
@@ -728,22 +740,10 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                   _lens(
                     menuCircle,
                     const Key('liquid_menu_lens'),
-                    isCircle: true,
-                    backgroundColor: _pressedMenu
-                        ? const Color(0xFF1C2536)
-                        : const Color(0xFF10141E),
-                    border: Border.all(color: statusColor, width: 2.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: statusColor.withValues(alpha: 0.35),
-                        blurRadius: 8,
-                      ),
-                    ],
+                    shape: LiquidGlassShape.continuousRoundedRectangle(
+                      cornerRadius: 26,
+                      lightColor: rimLightColor,
+                    ),
                     icon: PhosphorIconsRegular.slidersHorizontal,
                     iconOpacity: menuCirclePhase,
                     iconColor: statusColor,
@@ -754,15 +754,10 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                     _lens(
                       cardConnectorLine,
                       const Key('liquid_menu_card_connector'),
-                      backgroundColor: statusColor,
-                      borderRadius: BorderRadius.circular(1.5),
-                      border: Border.all(color: Colors.transparent, width: 0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: statusColor.withValues(alpha: 0.6),
-                          blurRadius: 4,
-                        ),
-                      ],
+                      shape: LiquidGlassShape.roundedRectangle(
+                        cornerRadius: 0,
+                        lightColor: rimLightColor,
+                      ),
                     ),
 
                   // 7. Full Menu Card (Blooms at the tip of Line 3)
@@ -770,30 +765,11 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
                     _lens(
                       currentCardRect,
                       const Key('liquid_menu_card_lens'),
-                      borderRadius:
-                          BorderRadius.circular(currentCardCornerRadius),
-                      backgroundColor: const Color(0xFF0F1420),
-                      border: Border.all(
-                        color: statusColor.withValues(alpha: 0.55),
-                        width: 1.5,
+                      shape: LiquidGlassShape.continuousRoundedRectangle(
+                        cornerRadius: currentCardCornerRadius,
+                        lightColor: rimLightColor,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.85),
-                          blurRadius: 32,
-                          spreadRadius: 4,
-                          offset: const Offset(0, 8),
-                        ),
-                        BoxShadow(
-                          color: statusColor.withValues(alpha: 0.22),
-                          blurRadius: 16,
-                        ),
-                      ],
-                      content: ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(currentCardCornerRadius),
-                        child: cardContent,
-                      ),
+                      content: cardContent,
                     ),
                 ],
               ),
@@ -867,49 +843,37 @@ class _LiquidSidebarSeedState extends State<LiquidSidebarSeed>
   Widget _lens(
     Rect rect,
     Key key, {
-    BorderRadius? borderRadius,
-    bool isCircle = false,
+    LiquidGlassShape? shape,
     Widget? content,
     IconData? icon,
     double iconOpacity = 0,
     Color? iconColor,
-    Color? backgroundColor,
-    Border? border,
-    List<BoxShadow>? boxShadow,
   }) {
     final statusColor =
         widget.isCliConnected ? AppTheme.cyan : AppTheme.warning;
+    final rimLightColor = widget.isCliConnected
+        ? Color.lerp(Colors.white, AppTheme.cyan, 0.40)!
+        : Color.lerp(Colors.white, AppTheme.warning, 0.45)!;
 
     return Positioned.fromRect(
       key: key,
       rect: rect,
-      child: Container(
-        decoration: BoxDecoration(
-          color: backgroundColor ?? const Color(0xFF10141E),
-          shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius:
-              isCircle ? null : (borderRadius ?? BorderRadius.circular(16)),
-          border: border ?? Border.all(color: statusColor, width: 1.5),
-          boxShadow: boxShadow ??
-              [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.65),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+      child: LiquidGlassLens(
+        style: LiquidGlassStyle(
+          shape: shape ??
+              LiquidGlassShape.continuousRoundedRectangle(
+                lightColor: rimLightColor,
+              ),
         ),
         child: content ??
             (icon == null
                 ? const SizedBox.expand()
                 : Opacity(
                     opacity: _phase(iconOpacity, 0.65, 1.0),
-                    child: Center(
-                      child: Icon(
-                        icon,
-                        color: iconColor ?? statusColor,
-                        size: 20,
-                      ),
+                    child: Icon(
+                      icon,
+                      color: iconColor ?? statusColor,
+                      size: 19,
                     ),
                   )),
       ),
