@@ -404,13 +404,16 @@ class ScansTab extends StatelessWidget {
         : null;
 
     return Container(
-      width: 40,
-      height: 40,
-      padding: const EdgeInsets.all(7),
+      width: 42,
+      height: 42,
+      padding: const EdgeInsets.all(7.5),
       decoration: BoxDecoration(
-        color: AppTheme.previewSurfaceElevated,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.previewBorder, width: 1),
+        color: const Color(0xFF0D1117),
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(
+          color: const Color(0xFF1E2638),
+          width: 0.8,
+        ),
       ),
       child: faviconUrl != null
           ? Image.network(
@@ -469,9 +472,12 @@ class ScansTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.previewSurface,
+          color: const Color(0xFF080808),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppTheme.previewBorder),
+          border: Border.all(
+            color: const Color(0xFF1E2638).withValues(alpha: 0.8),
+            width: 0.8,
+          ),
         ),
         child: Row(
           children: [
@@ -495,8 +501,8 @@ class ScansTab extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 10.5,
+                    style: GoogleFonts.shareTechMono(
+                      fontSize: 11,
                       color: AppTheme.textSecondary,
                     ),
                     maxLines: 1,
@@ -508,7 +514,7 @@ class ScansTab extends StatelessWidget {
             const SizedBox(width: 8),
             const Icon(
               LucideIcons.chevron_right,
-              size: 18,
+              size: 16,
               color: AppTheme.textMuted,
             ),
           ],

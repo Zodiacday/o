@@ -69,24 +69,9 @@ class HeroScanCard extends StatelessWidget {
         ),
         const SizedBox(height: 26),
         _buildScanSurface(),
+        const SizedBox(height: 14),
+        _buildActionButtons(),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildTextAction(
-              label: 'Paste URL',
-              icon: LucideIcons.clipboard_paste,
-              onTap: onPasteUrl,
-            ),
-            _buildActionDivider(),
-            _buildTextAction(
-              label: 'Enter URL',
-              icon: LucideIcons.pencil,
-              onTap: onEnterUrl,
-            ),
-          ],
-        ),
-        const SizedBox(height: 13),
         _buildCommandLink(),
         const SizedBox(height: 4),
         Center(child: NetworkStatusPill(service: networkService)),
@@ -177,93 +162,120 @@ class HeroScanCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTextAction({
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildPillAction(
+          label: 'Paste URL',
+          icon: LucideIcons.clipboard_paste,
+          onTap: onPasteUrl,
+          isPrimary: false,
+        ),
+        const SizedBox(width: 10),
+        _buildPillAction(
+          label: 'Enter URL',
+          icon: LucideIcons.pencil,
+          onTap: onEnterUrl,
+          isPrimary: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPillAction({
     required String label,
     required IconData icon,
     required VoidCallback onTap,
+    required bool isPrimary,
   }) {
     return Semantics(
       button: true,
       label: label,
-      hint: 'Use a preview URL instead of scanning',
       child: Bounceable(
         scaleFactor: 0.96,
         onTap: () {
           HapticFeedback.lightImpact();
           onTap();
         },
-        child: DecoratedBox(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           decoration: BoxDecoration(
-            color: AppTheme.cyan.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 14, color: AppTheme.cyan),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-              ],
+            color: isPrimary
+                ? AppTheme.cyan.withValues(alpha: 0.10)
+                : const Color(0xFF111111),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isPrimary
+                  ? AppTheme.cyan.withValues(alpha: 0.35)
+                  : const Color(0xFF242424),
+              width: 0.8,
             ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 13,
+                color: isPrimary ? AppTheme.cyan : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isPrimary ? Colors.white : AppTheme.textSecondary,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildActionDivider() {
-    return Container(width: 1, height: 14, color: AppTheme.previewBorder);
-  }
-
   Widget _buildCommandLink() {
     return Semantics(
       button: true,
-      label: 'Copy previewport start command',
+      label: 'Copy pp start command',
       hint: 'Copies the command to the clipboard',
-      child: GestureDetector(
-        key: const Key('copy-cli-command'),
-        onTap: onCopyCommand,
+      child: Bounceable(
+        scaleFactor: 0.98,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onCopyCommand();
+        },
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Run ',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: AppTheme.textMuted,
-                    ),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              key: const Key('copy-cli-command'),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Run ',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
                   ),
-                  TextSpan(
-                    text: 'previewport start',
-                    style: GoogleFonts.jetBrainsMono(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary,
-                    ),
+                ),
+                Text(
+                  'pp start',
+                  style: GoogleFonts.shareTechMono(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
                   ),
-                  const TextSpan(text: '  '),
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Icon(
-                      LucideIcons.copy,
-                      size: 12,
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(
+                  LucideIcons.copy,
+                  size: 13,
+                  color: AppTheme.textMuted,
+                ),
+              ],
             ),
           ),
         ),
