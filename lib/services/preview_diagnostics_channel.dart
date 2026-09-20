@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../models/preview_diagnostic.dart';
@@ -16,9 +15,6 @@ class PreviewDiagnosticsChannel {
   final String? controlUrl;
   final PreviewDiagnosticHandler onDiagnostic;
   final PreviewHealthyHandler onHealthy;
-  final void Function(String message, String level, String source)? onLog;
-  final void Function(bool connected)? onConnectionChanged;
-  final VoidCallback? onBugReportAck;
 
   WebSocketChannel? _channel;
   StreamSubscription<Object?>? _subscription;
@@ -26,28 +22,6 @@ class PreviewDiagnosticsChannel {
   bool _connected = false;
   Map<String, Object?>? _latestProgress;
   Timer? _reconnectTimer;
-
-  bool get isConnected => _connected;
-
-  void triggerHotReload() {
-    if (_disposed || !_connected) return;
-    _channel?.sink.add(jsonEncode({'type': 'action', 'action': 'reload'}));
-  }
-
-  void triggerHotRestart() {
-    if (_disposed || !_connected) return;
-    _channel?.sink.add(jsonEncode({'type': 'action', 'action': 'restart'}));
-  }
-
-  void sendBugReport({required String base64Image, String? notes, String? device}) {
-    if (_disposed || !_connected) return;
-    _channel?.sink.add(jsonEncode({
-      'type': 'bug_report',
-      'image': base64Image,
-      'notes': notes,
-      'device': device ?? 'iPhone',
-    }));
-  }
 
   void reportProgress(int percent, {String state = 'loading'}) {
     if (_disposed) return;
@@ -62,7 +36,6 @@ class PreviewDiagnosticsChannel {
   void _reconnect() {
     if (_disposed) return;
     _connected = false;
-    onConnectionChanged?.call(false);
     _channel = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(const Duration(seconds: 2), connect);
@@ -72,9 +45,6 @@ class PreviewDiagnosticsChannel {
     required this.controlUrl,
     required this.onDiagnostic,
     required this.onHealthy,
-    this.onLog,
-    this.onConnectionChanged,
-    this.onBugReportAck,
   });
 
   Future<void> connect() async {
@@ -88,7 +58,6 @@ class PreviewDiagnosticsChannel {
       await channel.ready;
       if (_disposed) return;
       _connected = true;
-      onConnectionChanged?.call(true);
       if (_latestProgress != null) channel.sink.add(jsonEncode(_latestProgress));
       _subscription = channel.stream.listen(
         _handleMessage,
@@ -107,7 +76,6 @@ class PreviewDiagnosticsChannel {
     _disposed = true;
     _reconnectTimer?.cancel();
     _connected = false;
-    onConnectionChanged?.call(false);
     await _subscription?.cancel();
     _subscription = null;
     await _closeChannel();
@@ -135,21 +103,6 @@ class PreviewDiagnosticsChannel {
         decoded['type'] == 'healthy' &&
         decoded['stage'] is String) {
       onHealthy();
-      return;
-    }
-
-    if (decoded is Map && decoded['type'] == 'bug_report_ack') {
-      onBugReportAck?.call();
-      return;
-    }
-
-    if (decoded is Map && decoded['type'] == 'log') {
-      final message = decoded['message'] as String?;
-      final level = decoded['level'] as String? ?? 'info';
-      if (message != null && message.trim().isNotEmpty) {
-        onLog?.call(message.trim(), level, 'flutter');
-      }
-      return;
     }
   }
 

@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:bonsoir/bonsoir.dart';
 import 'package:flutter/foundation.dart';
@@ -9,8 +7,7 @@ import '../models/nearby_preview.dart';
 
 typedef NearbyPreviewChanged = void Function(List<NearbyPreview> previews);
 
-/// Discovers PreviewPort CLI sessions while the app is visible on the scans tab
-/// via high-reliability dual-protocol discovery (mDNS + UDP beacon).
+/// Discovers PreviewPort CLI sessions while the app is visible on the scans tab.
 class NearbyPreviewDiscoveryService {
   final NearbyPreviewChanged onChanged;
   final void Function(Object error)? onError;
@@ -18,7 +15,6 @@ class NearbyPreviewDiscoveryService {
 
   BonsoirDiscovery? _discovery;
   StreamSubscription<BonsoirDiscoveryEvent>? _events;
-  RawDatagramSocket? _udpSocket;
   Future<void>? _startFuture;
   bool _running = false;
   bool _disposed = false;
@@ -48,40 +44,6 @@ class NearbyPreviewDiscoveryService {
   }
 
   Future<void> _start(int generation) async {
-    // 1. Dual-protocol UDP broadcast beacon listener (Port 42831)
-    try {
-      final udp = await RawDatagramSocket.bind(
-        InternetAddress.anyIPv4,
-        42831,
-        reuseAddress: true,
-        reusePort: true,
-      );
-      if (_disposed || generation != _generation) {
-        udp.close();
-      } else {
-        _udpSocket = udp;
-        udp.listen((RawSocketEvent event) {
-          if (event == RawSocketEvent.read) {
-            final datagram = udp.receive();
-            if (datagram != null) {
-              try {
-                final jsonString = utf8.decode(datagram.data);
-                final map = jsonDecode(jsonString);
-                if (map is Map) {
-                  final preview = NearbyPreview.fromUdpJson(Map<String, dynamic>.from(map));
-                  if (preview != null && !_disposed) {
-                    _previews[preview.id] = preview;
-                    _emit();
-                  }
-                }
-              } catch (_) {}
-            }
-          }
-        });
-      }
-    } catch (_) {}
-
-    // 2. Multicast DNS (Bonjour) discovery
     try {
       final discovery = BonsoirDiscovery(
         type: previewportDiscoveryType,
@@ -162,10 +124,6 @@ class NearbyPreviewDiscoveryService {
         // Discovery cleanup is best-effort and must never block navigation.
       }
     }
-
-    final udp = _udpSocket;
-    _udpSocket = null;
-    udp?.close();
 
     _running = false;
     if (clear && _previews.isNotEmpty) {

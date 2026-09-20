@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:toastification/toastification.dart';
 
 import '../theme/app_theme.dart';
-import 'app_toast.dart';
 
 class ShareQrModal extends StatelessWidget {
   final String url;
@@ -28,11 +28,18 @@ class ShareQrModal extends StatelessWidget {
 
   void _copyUrl(BuildContext context) {
     Clipboard.setData(ClipboardData(text: url));
+    HapticFeedback.lightImpact();
     Navigator.of(context).pop();
-    AppToast.success(
-      context,
-      title: 'Link copied',
-      description: 'Preview link copied to clipboard',
+    toastification.show(
+      context: context,
+      type: ToastificationType.success,
+      style: ToastificationStyle.flat,
+      title: const Text('Link copied'),
+      alignment: Alignment.topCenter,
+      autoCloseDuration: const Duration(seconds: 2),
+      primaryColor: AppTheme.cyan,
+      backgroundColor: AppTheme.surface,
+      foregroundColor: AppTheme.textPrimary,
     );
   }
 
@@ -92,7 +99,7 @@ class ShareQrModal extends StatelessWidget {
                     tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
-                      PhosphorIconsRegular.x,
+                      LucideIcons.x,
                       size: 19,
                       color: AppTheme.textSecondary,
                     ),
@@ -137,7 +144,7 @@ class ShareQrModal extends StatelessWidget {
                 height: 48,
                 child: FilledButton.icon(
                   onPressed: () => _copyUrl(context),
-                  icon: const Icon(PhosphorIconsRegular.copy, size: 16),
+                  icon: const Icon(LucideIcons.copy, size: 16),
                   label: const Text('Copy link'),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.cyan,

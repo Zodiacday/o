@@ -4,7 +4,6 @@ class SessionItem {
   final String title;
   final DateTime timestamp;
   final bool isFavorite;
-  final String? controlUrl;
 
   SessionItem({
     required this.id,
@@ -12,7 +11,6 @@ class SessionItem {
     required this.title,
     required this.timestamp,
     this.isFavorite = false,
-    this.controlUrl,
   });
 
   String get timeAgo {
@@ -25,25 +23,12 @@ class SessionItem {
     return '${timestamp.month}/${timestamp.day}';
   }
 
-  String get displayEndpoint {
-    try {
-      final uri = Uri.parse(url);
-      final portPart = uri.hasPort ? ':${uri.port}' : '';
-      return '${uri.host}$portPart';
-    } catch (_) {
-      return url.replaceFirst(RegExp(r'^https?:\/\/'), '');
-    }
-  }
-
-  String get displayUrl => displayEndpoint;
-
   SessionItem copyWith({
     String? id,
     String? url,
     String? title,
     DateTime? timestamp,
     bool? isFavorite,
-    String? controlUrl,
   }) {
     return SessionItem(
       id: id ?? this.id,
@@ -51,7 +36,6 @@ class SessionItem {
       title: title ?? this.title,
       timestamp: timestamp ?? this.timestamp,
       isFavorite: isFavorite ?? this.isFavorite,
-      controlUrl: controlUrl ?? this.controlUrl,
     );
   }
 
@@ -70,9 +54,6 @@ class SessionItem {
     timestamp:
         DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
     isFavorite: json['isFavorite'] as bool? ?? false,
-    // Control URLs contain short-lived bearer tokens and must never be restored
-    // from persistent history. Older records are sanitized during migration.
-    controlUrl: null,
   );
 }
 

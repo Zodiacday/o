@@ -58,19 +58,21 @@ void main() {
     expect(find.text('Tap to scan QR code'), findsOneWidget);
     expect(find.text('Ready to scan'), findsNothing);
     expect(find.text('Scan preview'), findsNothing);
-    expect(find.text('Paste URL'), findsNothing);
+    expect(find.text('Paste URL'), findsOneWidget);
     expect(find.text('Enter URL'), findsOneWidget);
 
     await tester.tap(find.text('Tap to scan QR code'));
+    await tester.tap(find.text('Paste URL'));
     await tester.tap(find.text('Enter URL'));
     await tester.tap(find.byKey(const Key('copy-cli-command')));
 
     await tester.tap(find.byTooltip('Connection information'));
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('How PreviewPort connects'), findsOneWidget);
-    expect(find.text('pp start'), findsOneWidget);
+    expect(find.text('previewport start'), findsOneWidget);
 
     expect(scanCount, 1);
+    expect(pasteCount, 1);
     expect(enterCount, 1);
     expect(copyCount, 1);
   });
@@ -110,7 +112,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (url, {title, controlUrl}) {},
+          onLaunchApp: (url, {title}) {},
           onLongPressItem: (_) {},
           networkService: _FakeNetworkStatusService(),
         ),
@@ -122,7 +124,7 @@ void main() {
 
     expect(find.text('Recent previews'), findsOneWidget);
     expect(find.text('No previews yet'), findsOneWidget);
-    expect(find.text('Run pp start to begin.'), findsNothing);
+    expect(find.text('Run previewport start to begin.'), findsNothing);
     expect(find.text(r'$ previewport'), findsNothing);
   });
 
@@ -146,7 +148,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (value, {title, controlUrl}) => launchedUrl = value,
+          onLaunchApp: (value, {title}) => launchedUrl = value,
           onLongPressItem: (_) {},
           networkService: _FakeNetworkStatusService(),
         ),
@@ -178,7 +180,7 @@ void main() {
           onPasteUrl: () {},
           onEnterUrl: () {},
           onCopyCommand: () {},
-          onLaunchApp: (value, {title, controlUrl}) {},
+          onLaunchApp: (value, {title}) {},
           onLongPressItem: (_) {},
           nearbyPreviews: const [
             NearbyPreview(
@@ -195,15 +197,15 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('LIVE WORKSTATION SENSED'), findsOneWidget);
-    expect(find.text('192.168.0.25:8082 · Ready on Wi-Fi'), findsOneWidget);
+    expect(find.text('Nearby previews'), findsOneWidget);
+    expect(find.text('192.168.0.25:8082 · Available now'), findsOneWidget);
     expect(find.text('Recent previews'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('LIVE WORKSTATION SENSED')).dy,
+      tester.getTopLeft(find.text('Nearby previews')).dy,
       lessThan(tester.getTopLeft(find.text('Recent previews')).dy),
     );
 
-    await tester.tap(find.text('Tap to Resume Preview'));
+    await tester.tap(find.text('Sink'));
     expect(opened, url);
   });
 

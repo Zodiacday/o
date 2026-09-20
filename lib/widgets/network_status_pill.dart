@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/network_status_service.dart';
@@ -52,27 +52,27 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
         title: 'Same Wi-Fi usually works best',
         description:
             'For local previews, keep your phone and development computer on the same Wi-Fi network.',
-        icon: PhosphorIconsRegular.wifiHigh,
+        icon: LucideIcons.wifi,
         color: AppTheme.cyan,
       ),
       NetworkState.cellularHotspot => (
         title: 'Cellular connection',
         description:
             'A local preview works through a phone hotspot or a URL that is reachable over the internet.',
-        icon: PhosphorIconsRegular.cellSignalFull,
+        icon: LucideIcons.signal,
         color: AppTheme.warning,
       ),
       NetworkState.offline => (
         title: 'Offline',
         description:
             'Connect to Wi-Fi or cellular data before opening a preview.',
-        icon: PhosphorIconsRegular.wifiSlash,
+        icon: LucideIcons.wifi_off,
         color: AppTheme.danger,
       ),
       NetworkState.unknown => (
         title: 'Checking network',
         description: 'PreviewPort is checking the device connection.',
-        icon: PhosphorIconsRegular.spinnerGap,
+        icon: LucideIcons.loader,
         color: AppTheme.textSecondary,
       ),
     };
@@ -122,7 +122,7 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
                     tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
-                      PhosphorIconsRegular.x,
+                      LucideIcons.x,
                       size: 19,
                       color: AppTheme.textSecondary,
                     ),
@@ -186,19 +186,8 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
       child: Bounceable(
         scaleFactor: 0.96,
         onTap: () => _showInfoSheet(context),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: _state == NetworkState.offline ? 10 : 8,
-            vertical: 6,
-          ),
-          decoration: _state == NetworkState.offline
-              ? BoxDecoration(
-                  color: const Color(0xFF220B0E),
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: const Color(0xFF6B1D26), width: 0.9),
-                )
-              : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -214,16 +203,14 @@ class _NetworkStatusPillState extends State<NetworkStatusPill> {
               Text(
                 details.label,
                 style: GoogleFonts.inter(
-                  color: _state == NetworkState.offline
-                      ? AppTheme.danger
-                      : AppTheme.textSecondary,
+                  color: AppTheme.textSecondary,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(width: 5),
               Icon(
-                PhosphorIconsRegular.info,
+                LucideIcons.info,
                 size: 12,
                 color: details.color.withValues(alpha: 0.75),
               ),

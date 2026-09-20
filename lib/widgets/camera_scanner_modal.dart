@@ -116,9 +116,7 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
 
   MobileScannerController _createScannerController() {
     return MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      detectionTimeoutMs: 250,
-      formats: const [BarcodeFormat.qrCode],
+      detectionSpeed: DetectionSpeed.noDuplicates,
       facing: CameraFacing.back,
     );
   }
@@ -156,11 +154,6 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
 
     try {
       await controller.initialize();
-      try {
-        await controller.lockCaptureOrientation(DeviceOrientation.portraitUp);
-      } catch (_) {
-        // Certain test environments or devices may not support orientation locking.
-      }
       if (!mounted) {
         await controller.dispose();
         return;
@@ -175,12 +168,7 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
   Future<void> _disposePhotoController() async {
     final controller = _photoController;
     _photoController = null;
-    if (controller != null) {
-      try {
-        await controller.unlockCaptureOrientation();
-      } catch (_) {}
-      await controller.dispose();
-    }
+    if (controller != null) await controller.dispose();
   }
 
   Future<void> _takePhoto() async {
@@ -304,24 +292,29 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
       );
     }
 
-    final previewSize = photoController.value.previewSize;
-    // Sensor previewSize is landscape (width > height, e.g. 1920 x 1080).
-    // In portrait orientation, width is the smaller dimension and height is the larger.
-    final pWidth = previewSize != null ? previewSize.height : 9.0;
-    final pHeight = previewSize != null ? previewSize.width : 16.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cameraAspectRatio = photoController.value.aspectRatio;
+        final viewportAspectRatio =
+            constraints.maxWidth / constraints.maxHeight;
+        final previewWidth = viewportAspectRatio > cameraAspectRatio
+            ? constraints.maxWidth
+            : constraints.maxHeight * cameraAspectRatio;
+        final previewHeight = viewportAspectRatio > cameraAspectRatio
+            ? constraints.maxWidth / cameraAspectRatio
+            : constraints.maxHeight;
 
-    return ClipRect(
-      key: const ValueKey('previewport-photo-preview'),
-      child: SizedBox.expand(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: pWidth,
-            height: pHeight,
-            child: CameraPreview(photoController),
+        return ClipRect(
+          key: const ValueKey('previewport-photo-preview'),
+          child: Center(
+            child: SizedBox(
+              width: previewWidth,
+              height: previewHeight,
+              child: CameraPreview(photoController),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

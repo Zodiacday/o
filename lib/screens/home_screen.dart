@@ -5,20 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:toastification/toastification.dart';
 import '../models/session_item.dart';
 import '../models/camera_capture_result.dart';
+import '../models/preview_connection.dart';
 import '../models/nearby_preview.dart';
 import '../services/history_service.dart';
 import '../services/native_camera_service.dart';
 import '../services/nearby_preview_discovery_service.dart';
-import '../widgets/animated_grid_pattern.dart';
-import '../widgets/app_toast.dart';
 import '../widgets/floating_navbar.dart';
 import '../widgets/manual_url_modal.dart';
+import '../widgets/animated_grid_background.dart';
 import '../widgets/rename_dialog.dart';
 import 'app_viewer_screen.dart';
 import 'settings_screen.dart';
-import 'tabs/quick_connect_tab.dart';
+import 'tabs/history_tab.dart';
 import 'tabs/scans_tab.dart';
 import '../theme/app_theme.dart';
 
@@ -39,12 +40,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final NearbyPreviewDiscoveryService _nearbyDiscovery;
   List<NearbyPreview> _nearbyPreviews = const [];
   bool _appIsActive = true;
-  static final List<List<int>> _gridSquares = [
-    [1, 2], [3, 5], [7, 2], [8, 3], [10, 4],
-    [2, 7], [4, 9], [6, 12], [8, 14], [3, 15],
-    [11, 2], [12, 5], [14, 8], [9, 10], [5, 13],
-    [7, 16], [2, 18], [10, 19], [4, 20], [8, 22],
-  ];
 
   int get _safeNavIndex {
     if (_currentNavIndex < 0 ||
@@ -87,17 +82,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appIsActive = state == AppLifecycleState.resumed;
-    if (_appIsActive) {
-      _loadHistory();
-      unawaited(_restartNearbyDiscovery());
-    } else {
-      unawaited(_syncNearbyDiscovery());
-    }
-  }
-
-  Future<void> _restartNearbyDiscovery() async {
-    await _nearbyDiscovery.stop();
-    await _syncNearbyDiscovery();
+    unawaited(_syncNearbyDiscovery());
   }
 
   Future<void> _loadHistory() async {
@@ -141,11 +126,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _copyCliCommand() {
-    Clipboard.setData(const ClipboardData(text: 'pp start'));
-    AppToast.success(
-      context,
-      title: 'Command Copied',
-      description: 'Run it in your Flutter project root to generate a QR code',
+    Clipboard.setData(const ClipboardData(text: 'previewport start'));
+    HapticFeedback.lightImpact();
+    toastification.show(
+      context: context,
+      type: ToastificationType.success,
+      style: ToastificationStyle.flat,
+      title: const Text('Command Copied'),
+      description: const Text(
+        'Run it in your Flutter project root to generate a QR code',
+      ),
+      alignment: Alignment.topCenter,
+      autoCloseDuration: const Duration(seconds: 2),
+      primaryColor: AppTheme.cyan,
+      backgroundColor: AppTheme.surface,
+      foregroundColor: Colors.white,
     );
   }
 
@@ -154,26 +149,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String? title,
     String? controlUrl,
   }) async {
-    unawaited(
-      HistoryService.saveSession(url, title: title, controlUrl: controlUrl),
-    );
-    unawaited(_nearbyDiscovery.stop());
+    await HistoryService.saveSession(url, title: title);
+    await _loadHistory();
 
+    if (!mounted) return;
+    await _nearbyDiscovery.stop();
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AppViewerScreen(
-          url: url,
-          title: title,
-          controlUrl: controlUrl,
-        ),
+        builder: (_) =>
+            AppViewerScreen(url: url, title: title, controlUrl: controlUrl),
       ),
     );
 
-    if (mounted) {
-      _loadHistory();
-      unawaited(_syncNearbyDiscovery());
-    }
+    _loadHistory();
+    unawaited(_syncNearbyDiscovery());
   }
 
   Future<void> _openNearbyPreview(NearbyPreview preview) async {
@@ -192,15 +182,56 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     } catch (_) {
       if (!mounted) return;
-      AppToast.warning(
-        context,
-        title: 'Preview unavailable',
-        description:
-            '${preview.projectName} is no longer reachable on this network.',
+      toastification.show(
+        context: context,
+        type: ToastificationType.warning,
+        style: ToastificationStyle.flat,
+        title: const Text('Preview unavailable'),
+        description: Text(
+          '${preview.projectName} is no longer reachable on this network.',
+        ),
+        alignment: Alignment.topCenter,
+        autoCloseDuration: const Duration(seconds: 3),
+        primaryColor: AppTheme.cyan,
+        backgroundColor: AppTheme.surface,
+        foregroundColor: Colors.white,
       );
     }
   }
 
+  Future<void> _pasteFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+
+    final connection = PreviewConnection.tryParse(text ?? '');
+    if (connection != null) {
+      HapticFeedback.mediumImpact();
+      _launchApp(connection.url, title: connection.projectName);
+    } else {
+      if (mounted) {
+        toastification.show(
+          context: context,
+          type: ToastificationType.warning,
+          style: ToastificationStyle.flat,
+          title: Text(
+            text != null && text.isNotEmpty
+                ? 'Invalid Web URL'
+                : 'Clipboard is Empty',
+          ),
+          description: Text(
+            text != null && text.isNotEmpty
+                ? 'Clipboard does not contain a valid http/https link'
+                : 'Copy a URL from your terminal or browser first',
+          ),
+          alignment: Alignment.topCenter,
+          autoCloseDuration: const Duration(seconds: 3),
+          primaryColor: const Color(0xFF00E5FF),
+          backgroundColor: const Color(0xFF000000),
+          foregroundColor: Colors.white,
+        );
+      }
+    }
+  }
 
   void _showManualUrlModal() {
     showModalBottomSheet(
@@ -233,135 +264,108 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       backgroundColor: const Color(0xFF000000),
       body: Stack(
         children: [
-          // FlutterFX AnimatedGridPattern from flutterfx/flutterfx_widgets (half opacity)
+          // FlutterFX-inspired animated cells add depth while remaining
+          // behind every actionable surface.
           Positioned.fill(
-            child: IgnorePointer(
-              child: ClipRect(
-                child: Transform.translate(
-                  offset: const Offset(0, -100),
-                  child: Opacity(
-                    opacity: 0.5,
-                    child: AnimatedGridPattern(
-                      squares: _gridSquares,
-                      gridSize: 30,
-                      skewAngle: 15,
-                    ),
-                  ),
-                ),
-              ),
+            child: AnimatedGridBackground(
+              scrollController: _scanScrollController,
             ),
           ),
 
-          // Floating brand lockup and full-height scrolling tab content.
-          // The tab content extends from top: 0 so cards glide smoothly
-          // underneath the floating brand header without clipping.
+          // Floating brand lockup. It intentionally has no surface or nav
+          // background so the app content remains visually uninterrupted.
           SafeArea(
             child: Stack(
               children: [
-                // 1. Tab Content Stack
-                Positioned.fill(
-                  child: IndexedStack(
-                    index: _safeNavIndex,
+                Positioned(
+                  top: 12,
+                  left: 22,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      ScansTab(
-                        scrollController: _scanScrollController,
-                        history: _history,
-                        isLoading: _isLoading,
-                        onOpenScanner: _openScanner,
-                        onEnterUrl: _showManualUrlModal,
-                        onCopyCommand: _copyCliCommand,
-                        isScannerBusy: _isOpeningScanner,
-                        onLaunchApp: _launchApp,
-                        onLongPressItem: _showRenameDialog,
-                        capturedPhotoBytes: _capturedPhotoBytes,
-                        onDismissCapturedPhoto: _clearCapturedPhoto,
-                        nearbyPreviews: _nearbyPreviews,
-                        onOpenNearbyPreview: _openNearbyPreview,
-                        onRefresh: () async {
-                          await _loadHistory();
-                          await _restartNearbyDiscovery();
-                        },
+                      Image.asset(
+                        'assets/previewport-logo-transparent.png',
+                        width: 30,
+                        height: 30,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
                       ),
-                      QuickConnectTab(
-                        history: _history,
-                        nearbyPreviews: _nearbyPreviews,
-                        onLaunchApp: _launchApp,
-                        onOpenHistory: () => setState(() => _currentNavIndex = 2),
-                        onRefresh: () async {
-                          await _loadHistory();
-                          await _restartNearbyDiscovery();
-                        },
+                      const SizedBox(width: 10),
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Preview',
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'Port',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.cyan,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      SettingsScreen(onLaunchApp: _launchApp),
                     ],
                   ),
                 ),
 
-                // 2. Floating brand lockup positioned on top of scrolling content.
-                // Smoothly fades out when navigating to History or Settings so their
-                // headline titles remain unobstructed and prominent.
-                Positioned(
-                  top: 12,
-                  left: 22,
-                  child: AnimatedOpacity(
-                    opacity: _safeNavIndex == 0 ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    child: IgnorePointer(
-                      ignoring: _safeNavIndex != 0,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/previewport-logo-transparent.png',
-                            width: 30,
-                            height: 30,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                          ),
-                          const SizedBox(width: 10),
-                          RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: 'Preview',
-                                  style: GoogleFonts.rajdhani(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: 'Port',
-                                  style: GoogleFonts.rajdhani(
-                                    fontSize: 16.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.cyan,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ],
+                Padding(
+                  padding: const EdgeInsets.only(top: 54),
+                  child: Column(
+                    children: [
+                      // Tab Content Stack
+                      Expanded(
+                        child: IndexedStack(
+                          index: _safeNavIndex,
+                          children: [
+                            ScansTab(
+                              scrollController: _scanScrollController,
+                              history: _history,
+                              isLoading: _isLoading,
+                              onOpenScanner: _openScanner,
+                              onPasteUrl: _pasteFromClipboard,
+                              onEnterUrl: _showManualUrlModal,
+                              onCopyCommand: _copyCliCommand,
+                              isScannerBusy: _isOpeningScanner,
+                              onLaunchApp: _launchApp,
+                              onLongPressItem: _showRenameDialog,
+                              capturedPhotoBytes: _capturedPhotoBytes,
+                              onDismissCapturedPhoto: _clearCapturedPhoto,
+                              nearbyPreviews: _nearbyPreviews,
+                              onOpenNearbyPreview: _openNearbyPreview,
                             ),
-                          ),
-                        ],
+                            HistoryTab(
+                              history: _history,
+                              onLaunchApp: _launchApp,
+                              onLongPressItem: _showRenameDialog,
+                            ),
+                            const SettingsScreen(),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
 
-          // Real floating iOS glass pill navbar hovering over bottom content.
-          // Suspended gracefully above the home indicator with side margins,
-          // allowing the background grid and preview cards to blur behind it.
+          // A dedicated bottom navigation block keeps navigation distinct from
+          // the preview content without introducing a heavy floating capsule.
           Positioned(
-            bottom: MediaQuery.paddingOf(context).bottom > 0
-                ? MediaQuery.paddingOf(context).bottom + 6
-                : 18,
-            left: 20,
-            right: 20,
+            bottom: 0,
+            left: 0,
+            right: 0,
             child: FloatingNavBar(
               currentIndex: _safeNavIndex,
               onTabSelected: _selectNavIndex,

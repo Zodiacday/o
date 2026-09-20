@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 
 class PresetsTab extends StatelessWidget {
   final VoidCallback onPasteClipboard;
@@ -51,7 +51,7 @@ class PresetsTab extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        PhosphorIconsRegular.clipboardText,
+                        LucideIcons.clipboard_copy,
                         size: 16,
                         color: Color(0xFF00E5FF),
                       ),
@@ -96,7 +96,7 @@ class PresetsTab extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(
-                              PhosphorIconsRegular.clipboard,
+                              LucideIcons.clipboard_paste,
                               size: 16,
                               color: Color(0xFF00E5FF),
                             ),
@@ -137,7 +137,7 @@ class PresetsTab extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        PhosphorIconsRegular.radio,
+                        LucideIcons.radio,
                         size: 16,
                         color: Color(0xFF00E5FF),
                       ),

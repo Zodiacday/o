@@ -1,35 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bounceable/flutter_bounceable.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:toastification/toastification.dart';
 
 import '../services/history_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/app_toast.dart';
 import '../widgets/cache_management_modal.dart';
-import 'history_screen.dart';
+import '../widgets/history_management_modal.dart';
 import 'licenses_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
-  final void Function(String url, {String? title, String? controlUrl})? onLaunchApp;
-
-  const SettingsScreen({super.key, this.onLaunchApp});
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const String _kHostPrefKey = 'quick_connect_target_host';
   int _sessionCount = 0;
-  String _targetHost = '192.168.1.100';
 
   @override
   void initState() {
     super.initState();
     _loadHistoryCount();
-    _loadTargetHost();
   }
 
   Future<void> _loadHistoryCount() async {
@@ -37,104 +32,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() => _sessionCount = history.length);
     }
-  }
-
-  Future<void> _loadTargetHost() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_kHostPrefKey);
-    if (saved != null && saved.isNotEmpty && mounted) {
-      setState(() => _targetHost = saved);
-    }
-  }
-
-  Future<void> _saveTargetHost(String host) async {
-    final clean = host.trim();
-    if (clean.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kHostPrefKey, clean);
-    if (mounted) {
-      setState(() => _targetHost = clean);
-      _showToast('Saved Target IP: $clean');
-    }
-  }
-
-  void _showEditHostDialog() {
-    final controller = TextEditingController(text: _targetHost);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF14171F),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppTheme.borderSubtle),
-        ),
-        title: Text(
-          'Target Workstation IP',
-          style: AppTypography.modalTitle(),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Enter your computer\'s local Wi-Fi or LAN IP address.',
-              style: AppTypography.subtitle(),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              style: AppTypography.monoData(fontSize: 14, color: Colors.white),
-              cursorColor: AppTheme.cyan,
-              decoration: InputDecoration(
-                hintText: '192.168.1.100',
-                hintStyle: AppTypography.monoData(color: AppTheme.textMuted),
-                filled: true,
-                fillColor: const Color(0xFF0C101A),
-                prefixIcon: const Icon(
-                  PhosphorIconsRegular.desktop,
-                  color: AppTheme.textMuted,
-                  size: 18,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppTheme.cyan),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              'Cancel',
-              style: AppTypography.button(color: AppTheme.textSecondary),
-            ),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _saveTargetHost(controller.text);
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.cyan,
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Save Host'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -153,12 +50,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Text(
               'Settings',
-              style: AppTypography.displayHero(),
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                height: 1.1,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.8,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'A few details about your PreviewPort workspace.',
-              style: AppTypography.subtitle(),
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
             ),
             const SizedBox(height: 36),
 
@@ -166,14 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Connection',
               children: [
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.desktop,
-                  title: 'Target workstation IP',
-                  subtitle: 'LAN IP for Quick Connect & probe',
-                  trailing: _targetHost,
-                  onTap: _showEditHostDialog,
-                ),
-                _buildSettingRow(
-                  icon: PhosphorIconsRegular.globe,
+                  icon: LucideIcons.globe,
                   title: 'Default port & host',
                   subtitle: 'CLI development server listener',
                   trailing: '8090',
@@ -186,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.terminalWindow,
+                  icon: LucideIcons.terminal,
                   title: 'Connection protocol',
                   subtitle: 'QR payload URI scheme',
                   trailing: 'v1',
@@ -206,32 +105,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Storage',
               children: [
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.clock,
+                  icon: LucideIcons.clock,
                   title: 'Session history',
                   subtitle: 'Saved local preview connections',
                   trailing:
                       '$_sessionCount ${_sessionCount == 1 ? 'item' : 'items'}',
-                  onTap: () async {
-                    HapticFeedback.selectionClick();
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => HistoryScreen(
-                          onLaunchApp: (url, {title, controlUrl}) {
-                            Navigator.of(context).pop();
-                            widget.onLaunchApp?.call(
-                              url,
-                              title: title,
-                              controlUrl: controlUrl,
-                            );
-                          },
-                        ),
-                      ),
-                    );
-                    _loadHistoryCount();
-                  },
+                  onTap: () => HistoryManagementModal.show(
+                    context,
+                    onUpdated: _loadHistoryCount,
+                  ),
                 ),
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.hardDrive,
+                  icon: LucideIcons.hard_drive,
                   title: 'Web cache',
                   subtitle: 'Temporary assets and cookies',
                   trailing: 'Manage',
@@ -250,14 +135,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Privacy',
               children: [
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.shieldCheck,
+                  icon: LucideIcons.shield_check,
                   title: 'Camera & network',
                   subtitle: 'On-device processing and local connections',
                   trailing: 'Local only',
                   onTap: () => _showPrivacyDialog(context),
                 ),
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.code,
+                  icon: LucideIcons.code,
                   title: 'Open-source licenses',
                   subtitle: 'Libraries used by PreviewPort',
                   trailing: 'View',
@@ -273,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'About',
               children: [
                 _buildSettingRow(
-                  icon: PhosphorIconsRegular.info,
+                  icon: LucideIcons.info,
                   title: 'PreviewPort',
                   subtitle: 'Flutter preview player',
                   trailing: 'v1.0.0',
@@ -284,7 +169,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Center(
               child: Text(
                 'PREVIEWPORT',
-                style: AppTypography.sectionHud(color: AppTheme.textMuted),
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 2.0,
+                ),
               ),
             ),
           ],
@@ -301,22 +191,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          padding: const EdgeInsets.only(left: 1, bottom: 10),
           child: Text(
             title.toUpperCase(),
-            style: AppTypography.sectionHud(color: AppTheme.textMuted),
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textMuted,
+              letterSpacing: 1.25,
+            ),
           ),
         ),
         Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF090D15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFF1B2232),
-              width: 0.9,
+          decoration: const BoxDecoration(
+            border: Border(
+              top: BorderSide(color: AppTheme.previewBorder),
+              bottom: BorderSide(color: AppTheme.previewBorder),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Column(
             children: [
               for (var index = 0; index < children.length; index++) ...[
@@ -327,7 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Divider(
                       height: 1,
                       thickness: 1,
-                      color: Color(0xFF161B26),
+                      color: AppTheme.borderSubtle,
                     ),
                   ),
               ],
@@ -369,12 +261,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: AppTypography.itemTitle(),
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.15,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: AppTypography.subtitle(),
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -384,12 +284,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 10),
           Text(
             trailing,
-            style: AppTypography.monoData(color: AppTheme.textMuted),
+            style: GoogleFonts.jetBrainsMono(
+              fontSize: 10.5,
+              color: AppTheme.textMuted,
+            ),
           ),
           if (onTap != null) ...[
             const SizedBox(width: 8),
             const Icon(
-              PhosphorIconsRegular.caretRight,
+              LucideIcons.chevron_right,
               size: 16,
               color: AppTheme.textMuted,
             ),
@@ -418,7 +321,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showToast(String message) {
-    AppToast.info(context, title: message);
+    toastification.show(
+      context: context,
+      type: ToastificationType.info,
+      style: ToastificationStyle.flat,
+      title: Text(message),
+      alignment: Alignment.topCenter,
+      autoCloseDuration: const Duration(seconds: 2),
+      primaryColor: AppTheme.cyan,
+      backgroundColor: AppTheme.surface,
+      foregroundColor: AppTheme.textPrimary,
+    );
   }
 
   void _showPrivacyDialog(BuildContext context) {
@@ -459,12 +372,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Text(
                             'Privacy',
-                            style: AppTypography.headline(),
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textPrimary,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'A clear view of how PreviewPort handles access.',
-                            style: AppTypography.subtitle(),
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textSecondary,
+                              fontSize: 12.5,
+                            ),
                           ),
                         ],
                       ),
@@ -473,7 +394,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(
-                        PhosphorIconsRegular.x,
+                        LucideIcons.x,
                         size: 19,
                         color: AppTheme.textSecondary,
                       ),
@@ -483,11 +404,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 28),
                 Text(
                   'CAMERA',
-                  style: AppTypography.sectionHud(color: AppTheme.textMuted),
+                  style: GoogleFonts.inter(
+                    color: AppTheme.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.25,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _buildPrivacyRow(
-                  icon: PhosphorIconsRegular.qrCode,
+                  icon: LucideIcons.scan_line,
                   title: 'QR detection',
                   body: 'Camera frames are processed on this device.',
                   status: 'On-device',
@@ -495,18 +421,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 24),
                 Text(
                   'NETWORK',
-                  style: AppTypography.sectionHud(color: AppTheme.textMuted),
+                  style: GoogleFonts.inter(
+                    color: AppTheme.textMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.25,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _buildPrivacyRow(
-                  icon: PhosphorIconsRegular.broadcast,
+                  icon: LucideIcons.network,
                   title: 'Preview connection',
                   body: 'Your phone connects directly to the scanned URL.',
                   status: 'Direct',
                 ),
                 const Divider(height: 1, color: AppTheme.borderSubtle),
                 _buildPrivacyRow(
-                  icon: PhosphorIconsRegular.eyeSlash,
+                  icon: LucideIcons.eye_off,
                   title: 'Tracking',
                   body: 'No analytics or personal identifiers are collected.',
                   status: 'None',
@@ -538,12 +469,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: AppTypography.itemTitle(fontSize: 13.5),
+                  style: GoogleFonts.inter(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: AppTypography.subtitle(fontSize: 11.5, height: 1.35),
+                  style: GoogleFonts.inter(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11.5,
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -551,7 +490,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 12),
           Text(
             status,
-            style: AppTypography.monoData(color: AppTheme.cyan),
+            style: GoogleFonts.jetBrainsMono(
+              color: AppTheme.cyan,
+              fontSize: 10.5,
+            ),
           ),
         ],
       ),

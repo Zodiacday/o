@@ -25,7 +25,7 @@ The application has been overhauled into a **minimalist, high-performance develo
    * App icons, titles, URLs, and glowing cyan status dots now float cleanly against the background.
 
 3. **Installed & Integrated the Full Modern UI Suite:**
-   * **`phosphoricons_flutter` (`^1.0.0`)**: Precision Phosphor vector iconography across all screens, modals, and developer tools.
+   * **`flutter_lucide` (`^1.1.0`)**: Modern vector outline icons across all screens, modals, and navigation buttons.
    * **`flutter_bounceable` (`^1.2.0`)**: Tactile spring physics bounce when tapping any card, chip, button, or navbar icon.
    * **`toastification` (`^2.3.0`)**: Floating frosted glass toast notifications for clipboard actions, cache clears, and link copying.
    * **`qr_flutter` (`^4.1.0`)**: Added `lib/widgets/share_qr_modal.dart` to generate instant QR codes on-demand for any preview link.

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:flutter_lucide/flutter_lucide.dart';
 
 import '../theme/app_theme.dart';
 
@@ -34,19 +34,6 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
         current == 'http://' ||
         current == 'https://') {
       _textController.text = '$current$port';
-      _textController.selection = TextSelection.fromPosition(
-        TextPosition(offset: _textController.text.length),
-      );
-      setState(() {});
-    }
-  }
-
-  Future<void> _pasteClipboard() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim();
-    if (text != null && text.isNotEmpty) {
-      HapticFeedback.lightImpact();
-      _textController.text = text;
       _textController.selection = TextSelection.fromPosition(
         TextPosition(offset: _textController.text.length),
       );
@@ -122,7 +109,7 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
                     tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(
-                      PhosphorIconsRegular.x,
+                      LucideIcons.x,
                       size: 19,
                       color: AppTheme.textSecondary,
                     ),
@@ -151,38 +138,10 @@ class _ManualUrlModalState extends State<ManualUrlModal> {
                       fontSize: 12,
                     ),
                     prefixIcon: const Icon(
-                      PhosphorIconsRegular.link,
+                      LucideIcons.link_2,
                       color: AppTheme.textMuted,
                       size: 17,
                     ),
-                    suffixIcon: _textController.text.isNotEmpty &&
-                            _textController.text != 'http://' &&
-                            _textController.text != 'https://'
-                        ? IconButton(
-                            tooltip: 'Clear input',
-                            icon: const Icon(
-                              PhosphorIconsRegular.xCircle,
-                              color: AppTheme.textMuted,
-                              size: 17,
-                            ),
-                            onPressed: () {
-                              _textController.text = 'http://';
-                              _textController.selection =
-                                  TextSelection.fromPosition(
-                                const TextPosition(offset: 7),
-                              );
-                              setState(() {});
-                            },
-                          )
-                        : IconButton(
-                            tooltip: 'Paste from clipboard',
-                            icon: const Icon(
-                              PhosphorIconsRegular.clipboardText,
-                              color: AppTheme.cyan,
-                              size: 17,
-                            ),
-                            onPressed: _pasteClipboard,
-                          ),
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                     border: const UnderlineInputBorder(
                       borderSide: BorderSide(color: AppTheme.previewBorder),

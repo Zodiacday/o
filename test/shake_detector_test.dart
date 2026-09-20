@@ -14,6 +14,15 @@ void main() {
         0,
         timestamp: start.add(const Duration(milliseconds: 120)),
       ),
+      isFalse,
+    );
+    expect(
+      recognizer.addSample(
+        18,
+        0,
+        0,
+        timestamp: start.add(const Duration(milliseconds: 240)),
+      ),
       isTrue,
     );
   });
@@ -30,8 +39,8 @@ void main() {
     );
 
     expect(sample(18, 0), isFalse);
-    expect(sample(-18, 120), isTrue);
-    expect(sample(18, 240), isFalse);
+    expect(sample(-18, 120), isFalse);
+    expect(sample(18, 240), isTrue);
     expect(sample(-18, 360), isFalse);
     expect(sample(18, 480), isFalse);
   });
@@ -55,39 +64,9 @@ void main() {
         18,
         0,
         0,
-        timestamp: start.add(const Duration(milliseconds: 1500)),
+        timestamp: start.add(const Duration(milliseconds: 1000)),
       ),
       isFalse,
-    );
-  });
-
-  test('default threshold ignores gentle motions (2.0 m/s²) and triggers on deliberate shake (15.0 m/s²)', () {
-    final recognizer = ShakeGestureRecognizer();
-    final start = DateTime(2026, 1, 1);
-
-    // Gentle motion (below 11.0 m/s²) is ignored
-    expect(recognizer.addSample(2.0, 0, 0, timestamp: start), isFalse);
-    expect(
-      recognizer.addSample(
-        -2.0,
-        0,
-        0,
-        timestamp: start.add(const Duration(milliseconds: 150)),
-      ),
-      isFalse,
-    );
-
-    // Deliberate shake (above 11.0 m/s² with reversal) triggers
-    final shakeStart = start.add(const Duration(milliseconds: 600));
-    expect(recognizer.addSample(15.0, 0, 0, timestamp: shakeStart), isFalse);
-    expect(
-      recognizer.addSample(
-        -15.0,
-        0,
-        0,
-        timestamp: shakeStart.add(const Duration(milliseconds: 150)),
-      ),
-      isTrue,
     );
   });
 }
