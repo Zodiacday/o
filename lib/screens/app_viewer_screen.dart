@@ -51,7 +51,16 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     WidgetsBinding.instance.addObserver(this);
     _shakeDetector = ShakeDetector(onShake: _openMenuFromShake);
     _shakeDetector.start();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
     _loadingStartedAt = DateTime.now();
 
     if (widget.controlUrl != null) {
@@ -99,6 +108,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
             _connectionTimeoutTimer?.cancel();
             setState(() => _loadingProgress = 100);
             _diagnosticsChannel?.reportProgress(100);
+            _ensureViewportFitCover();
             _completeLoadingWhenVisibleLongEnough();
           },
           onWebResourceError: (error) {
@@ -327,6 +337,27 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         duration: const Duration(seconds: 1),
       ),
     );
+  }
+
+  void _ensureViewportFitCover() {
+    _controller.runJavaScript('''
+      (function() {
+        try {
+          var meta = document.querySelector('meta[name="viewport"]');
+          if (meta) {
+            var content = meta.getAttribute('content') || '';
+            if (!content.includes('viewport-fit=cover')) {
+              meta.setAttribute('content', content + (content ? ', ' : '') + 'viewport-fit=cover');
+            }
+          } else {
+            var newMeta = document.createElement('meta');
+            newMeta.name = 'viewport';
+            newMeta.content = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+            document.head.appendChild(newMeta);
+          }
+        } catch (_) {}
+      })();
+    ''');
   }
 
   void _closeMenu() {
