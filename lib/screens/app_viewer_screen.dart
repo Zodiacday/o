@@ -42,6 +42,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   late final ShakeDetector _shakeDetector;
   PreviewDiagnosticsChannel? _diagnosticsChannel;
   Timer? _loadingCompletionTimer;
+  Timer? _connectionTimeoutTimer;
   DateTime? _loadingStartedAt;
 
   @override
@@ -76,6 +77,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         NavigationDelegate(
           onProgress: (progress) {
             if (!mounted || _hasError || _isPageReady) return;
+            if (progress > 0) _connectionTimeoutTimer?.cancel();
             setState(() => _loadingProgress = progress.clamp(0, 100));
             _diagnosticsChannel?.reportProgress(_loadingProgress);
           },
@@ -89,25 +91,43 @@ class _AppViewerScreenState extends State<AppViewerScreen>
                 _isPageReady = false;
                 _loadingProgress = 0;
               });
+              _scheduleConnectionTimeout();
             }
           },
           onPageFinished: (_) {
             if (!mounted || _hasError) return;
+            _connectionTimeoutTimer?.cancel();
             setState(() => _loadingProgress = 100);
             _diagnosticsChannel?.reportProgress(100);
             _completeLoadingWhenVisibleLongEnough();
           },
           onWebResourceError: (error) {
             if (error.isForMainFrame ?? true) {
+              _connectionTimeoutTimer?.cancel();
               if (mounted) {
+                // Detect connection-refused / unreachable host errors that
+                // happen before any bytes arrive (stuck at 0%). Give an
+                // actionable Wi-Fi hint rather than a raw WebKit error string.
+                final isUnreachable = _loadingProgress == 0 ||
+                    error.description.toLowerCase().contains('connect') ||
+                    error.description.toLowerCase().contains('refused') ||
+                    error.description.toLowerCase().contains('unreachable') ||
+                    error.description.toLowerCase().contains('network') ||
+                    (error.errorCode == -1004 || // NSURLErrorCannotConnectToHost
+                        error.errorCode == -1009 || // NSURLErrorNotConnectedToInternet
+                        error.errorCode == -6);
                 _showDiagnostic(
                   PreviewDiagnostic.localError(
-                    message: [
-                      if (error.description.trim().isNotEmpty)
-                        error.description.trim(),
-                      if (widget.controlUrl == null)
-                        'CLI diagnostics are unavailable for this connection.',
-                    ].join(' '),
+                    message: isUnreachable
+                        ? 'Cannot reach the preview. Make sure your phone and '
+                            'computer are on the same Wi-Fi network, then '
+                            'scan the QR code again.'
+                        : [
+                            if (error.description.trim().isNotEmpty)
+                              error.description.trim(),
+                            if (widget.controlUrl == null)
+                              'CLI diagnostics are unavailable for this connection.',
+                          ].join(' '),
                   ),
                 );
               }
@@ -116,6 +136,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
+    _scheduleConnectionTimeout();
   }
 
   @override
@@ -129,10 +150,30 @@ class _AppViewerScreenState extends State<AppViewerScreen>
     }
   }
 
+  /// Shows a friendly "can't reach preview" error if the WebView makes no
+  /// progress within 15 seconds. This catches the case where the IP in the
+  /// QR is wrong (different subnet, VPN, USB bridge) and the TCP connection
+  /// simply hangs with no WebResourceError fired by the engine.
+  void _scheduleConnectionTimeout() {
+    if (_hasError || _isPageReady) return;
+    _connectionTimeoutTimer?.cancel();
+    _connectionTimeoutTimer = Timer(const Duration(seconds: 15), () {
+      if (!mounted || _hasError || _isPageReady || _loadingProgress > 0) return;
+      _showDiagnostic(
+        PreviewDiagnostic.localError(
+          message: 'Cannot reach the preview after 15 seconds. '
+              'Make sure your phone and computer are on the same '
+              'Wi-Fi network, then scan the QR code again.',
+        ),
+      );
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _loadingCompletionTimer?.cancel();
+    _connectionTimeoutTimer?.cancel();
     _shakeDetector.stop();
     unawaited(_diagnosticsChannel?.dispose());
     SystemChrome.setEnabledSystemUIMode(
@@ -233,6 +274,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
   void _retryPreview() {
     HapticFeedback.mediumImpact();
     _loadingCompletionTimer?.cancel();
+    _connectionTimeoutTimer?.cancel();
     _loadingStartedAt = DateTime.now();
     _diagnosticsChannel?.reportProgress(0);
     setState(() {
@@ -243,6 +285,7 @@ class _AppViewerScreenState extends State<AppViewerScreen>
       _loadingProgress = 0;
     });
     _controller.reload();
+    _scheduleConnectionTimeout();
   }
 
   void _completeLoadingWhenVisibleLongEnough() {
