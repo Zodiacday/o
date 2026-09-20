@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart' hide ShimmerEffect;
 import 'package:flutter_bounceable/flutter_bounceable.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -119,14 +118,18 @@ class ScansTab extends StatelessWidget {
 
         Row(
           children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: AppTheme.cyan,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
             Text(
               'Recent previews',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                letterSpacing: -0.3,
-              ),
+              style: AppTypography.sectionHud(color: AppTheme.textSecondary),
             ),
           ],
         ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
@@ -159,19 +162,105 @@ class ScansTab extends StatelessWidget {
             ),
           )
         else if (history.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Center(
-              child: Text(
-                'No previews yet',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF64748B),
-                ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 22),
+            decoration: BoxDecoration(
+              color: const Color(0xFF080808),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: const Color(0x1F38BDF8),
+                width: 0.8,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.cyan.withValues(alpha: 0.03),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-          ).animate().fadeIn(delay: 150.ms, duration: 300.ms)
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: const Color(0x1400E5FF),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0x3800E5FF),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      LucideIcons.terminal,
+                      size: 22,
+                      color: AppTheme.cyan,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No previews yet',
+                  style: AppTypography.cardTitle(),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Run pp start in your Flutter project root or scan a terminal QR code to launch your live preview.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.subtitle(color: AppTheme.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Bounceable(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    onCopyCommand();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x1800E5FF),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: const Color(0x4000E5FF),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(LucideIcons.copy, size: 14, color: AppTheme.cyan),
+                        const SizedBox(width: 8),
+                        Text(
+                          'pp start',
+                          style: AppTypography.code(),
+                        ),
+                        Text(
+                          ' · Copy',
+                          style: AppTypography.body(
+                            color: AppTheme.cyan.withValues(alpha: 0.75),
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fadeIn(delay: 150.ms, duration: 350.ms)
+              .scale(begin: const Offset(0.97, 0.97), curve: Curves.easeOutCubic)
         else
           Column(
             children: history.asMap().entries.map((entry) {

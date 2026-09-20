@@ -62,3 +62,123 @@ class AppTheme {
     );
   }
 }
+
+/// Purpose-driven Cyber Telemetry / HUD typography system for PreviewPort.
+///
+/// Built on:
+/// - [Rajdhani]: Aeronautic display & condensed headers.
+/// - [Inter]: High-legibility digital interface sans.
+/// - [Share Tech Mono]: Clinical data, CLI syntax, and tabular monospace readouts.
+class AppTypography {
+  const AppTypography._();
+
+  // ---------------------------------------------------------------------------
+  // 1. Telemetry Display & Headers (Rajdhani)
+  // ---------------------------------------------------------------------------
+
+  /// Primary screen mastheads.
+  static TextStyle displayHero({Color color = AppTheme.textPrimary}) =>
+      GoogleFonts.rajdhani(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: -0.5,
+        height: 1.1,
+      );
+
+  /// Major functional titles (e.g., "Connect to a Flutter preview").
+  static TextStyle headline({Color color = AppTheme.textPrimary}) =>
+      GoogleFonts.rajdhani(
+        fontSize: 21,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: -0.4,
+        height: 1.15,
+      );
+
+  /// Card headers & modal dialog titles.
+  static TextStyle cardTitle({Color color = Colors.white}) =>
+      GoogleFonts.rajdhani(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: color,
+        letterSpacing: -0.25,
+      );
+
+  /// All-caps military/aerospace section telemetry badges.
+  /// (e.g., "RECENT PREVIEWS", "CONNECTION", "STORAGE").
+  static TextStyle sectionHud({Color color = AppTheme.textSecondary}) =>
+      GoogleFonts.rajdhani(
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: 1.4,
+      );
+
+  /// Action chip and badge typography.
+  static TextStyle actionLabel({Color color = Colors.white}) =>
+      GoogleFonts.rajdhani(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: color,
+        letterSpacing: 0.5,
+      );
+
+  // ---------------------------------------------------------------------------
+  // 2. Interface Body & Interactive Controls (Inter)
+  // ---------------------------------------------------------------------------
+
+  /// Standard body copy and explanations.
+  static TextStyle body({
+    Color color = AppTheme.textPrimary,
+    double fontSize = 14,
+    double? height = 1.4,
+  }) =>
+      GoogleFonts.inter(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w400,
+        color: color,
+        height: height,
+      );
+
+  /// Semi-bold emphasis in body contexts or buttons.
+  static TextStyle bodyMedium({
+    Color color = AppTheme.textPrimary,
+    double fontSize = 14,
+  }) =>
+      GoogleFonts.inter(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w600,
+        color: color,
+      );
+
+  /// Supporting labels, secondary captions, and hints.
+  static TextStyle subtitle({
+    Color color = AppTheme.textSecondary,
+    double fontSize = 13,
+    double? height = 1.4,
+  }) =>
+      GoogleFonts.inter(
+        fontSize: fontSize,
+        fontWeight: FontWeight.w400,
+        color: color,
+        height: height,
+      );
+
+  // ---------------------------------------------------------------------------
+  // 3. Telemetry Monospace Readouts (Share Tech Mono)
+  // ---------------------------------------------------------------------------
+
+  /// Raw CLI syntax, terminal arguments, and local port readouts.
+  static TextStyle code({
+    Color color = AppTheme.cyan,
+    double fontSize = 13,
+    FontWeight fontWeight = FontWeight.w600,
+  }) =>
+      GoogleFonts.shareTechMono(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: color,
+      );
+}
+

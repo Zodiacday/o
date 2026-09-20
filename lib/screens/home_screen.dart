@@ -15,7 +15,7 @@ import '../services/native_camera_service.dart';
 import '../services/nearby_preview_discovery_service.dart';
 import '../widgets/floating_navbar.dart';
 import '../widgets/manual_url_modal.dart';
-import '../widgets/animated_grid_background.dart';
+import '../widgets/animated_grid_pattern.dart';
 import '../widgets/rename_dialog.dart';
 import 'app_viewer_screen.dart';
 import 'settings_screen.dart';
@@ -40,6 +40,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final NearbyPreviewDiscoveryService _nearbyDiscovery;
   List<NearbyPreview> _nearbyPreviews = const [];
   bool _appIsActive = true;
+  static final List<List<int>> _gridSquares = [
+    [1, 2], [3, 5], [7, 2], [8, 3], [10, 4],
+    [2, 7], [4, 9], [6, 12], [8, 14], [3, 15],
+    [11, 2], [12, 5], [14, 8], [9, 10], [5, 13],
+    [7, 16], [2, 18], [10, 19], [4, 20], [8, 22],
+  ];
 
   int get _safeNavIndex {
     if (_currentNavIndex < 0 ||
@@ -264,11 +270,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       backgroundColor: const Color(0xFF000000),
       body: Stack(
         children: [
-          // FlutterFX-inspired animated cells add depth while remaining
-          // behind every actionable surface.
+          // FlutterFX AnimatedGridPattern with full bleed behind status bar
           Positioned.fill(
-            child: AnimatedGridBackground(
-              scrollController: _scanScrollController,
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: 0.65,
+                child: AnimatedGridPattern(
+                  squares: _gridSquares,
+                  gridSize: 32,
+                  skewAngle: 15,
+                ),
+              ),
             ),
           ),
 
@@ -296,20 +308,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           children: [
                             TextSpan(
                               text: 'Preview',
-                              style: GoogleFonts.inter(
-                                fontSize: 15,
+                              style: GoogleFonts.rajdhani(
+                                fontSize: 17,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
-                                letterSpacing: -0.3,
+                                letterSpacing: -0.2,
                               ),
                             ),
                             TextSpan(
                               text: 'Port',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
+                              style: GoogleFonts.rajdhani(
+                                fontSize: 16.5,
                                 fontWeight: FontWeight.w800,
                                 color: AppTheme.cyan,
-                                letterSpacing: -0.3,
+                                letterSpacing: -0.2,
                               ),
                             ),
                           ],

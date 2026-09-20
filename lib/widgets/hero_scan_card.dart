@@ -45,13 +45,7 @@ class HeroScanCard extends StatelessWidget {
                 children: [
                   Text(
                     'Connect to a Flutter preview',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      height: 1.15,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.55,
-                    ),
+                    style: AppTypography.headline(),
                   ),
                 ],
               ),
