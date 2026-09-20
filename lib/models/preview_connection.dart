@@ -56,7 +56,9 @@ class PreviewConnection {
     if (port == null || port < 1 || port > 65535 ||
         controlPort == null || controlPort < 1 || controlPort > 65535 ||
         !RegExp(r'^[a-zA-Z0-9._:-]+$').hasMatch(parts[1]) ||
-        !RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(parts[4])) return null;
+        !RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(parts[4])) {
+      return null;
+    }
     try {
       final target = Uri(scheme: 'http', host: parts[1], port: port);
       final control = Uri(scheme: 'ws', host: parts[1], port: controlPort,
